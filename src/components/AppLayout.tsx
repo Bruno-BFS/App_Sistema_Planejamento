@@ -1,15 +1,83 @@
-import { BarChart3, CalendarCheck2, CalendarClock, CalendarDays, CalendarRange, CheckSquare2, FolderKanban, LogOut, PlugZap, Sparkles, Target } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import {
+  BarChart3,
+  CalendarCheck2,
+  CalendarClock,
+  CalendarDays,
+  CalendarRange,
+  CheckSquare2,
+  FolderKanban,
+  LogOut,
+  Menu,
+  PlugZap,
+  Sparkles,
+  Target,
+  X,
+} from 'lucide-react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { NotificationCenter } from './NotificationCenter'
 
+const mainNavigation = [
+  { to: '/', label: 'Hoje', icon: CalendarDays, end: true },
+  { to: '/agenda', label: 'Agenda', icon: CalendarClock },
+  { to: '/tarefas', label: 'Tarefas', icon: CheckSquare2 },
+  { to: '/objetivos', label: 'Objetivos', icon: Target },
+  { to: '/projetos', label: 'Projetos', icon: FolderKanban },
+]
+
+const insightNavigation = [
+  { to: '/revisao', label: 'Revisão diária', icon: CalendarCheck2 },
+  { to: '/revisao-semanal', label: 'Revisão semanal', icon: CalendarRange },
+  { to: '/analises', label: 'Análises', icon: BarChart3 },
+  { to: '/integracoes', label: 'Integrações', icon: PlugZap },
+]
+
+function Avatar({ avatarInitial, avatarUrl, displayName }: { avatarInitial?: string; avatarUrl?: string; displayName: string }) {
+  return (
+    <span className="avatar">
+      {avatarInitial}
+      {avatarUrl && <img src={avatarUrl} alt={`Foto de ${displayName}`} referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true }} />}
+    </span>
+  )
+}
+
+function NavigationLink({ item, compact = false }: { item: typeof mainNavigation[number]; compact?: boolean }) {
+  const Icon = item.icon
+  return (
+    <NavLink className={({ isActive }) => `${compact ? 'mobile-nav-item' : 'nav-item'} ${isActive ? 'active' : ''}`} end={item.end} to={item.to}>
+      <Icon size={compact ? 20 : 19} />
+      <span>{item.label}</span>
+    </NavLink>
+  )
+}
+
 export function AppLayout() {
   const { user, signOut } = useAuth()
+  const location = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
   const displayName = user?.user_metadata.full_name ?? user?.user_metadata.name ?? 'Minha conta'
   const avatarUrl = user?.user_metadata.avatar_url ?? user?.user_metadata.picture
   const avatarInitial = displayName === 'Minha conta'
     ? user?.email?.slice(0, 1).toUpperCase()
     : displayName.slice(0, 1).toUpperCase()
+  const moreIsActive = insightNavigation.some((item) => location.pathname.startsWith(item.to)) || location.pathname === '/projetos'
+
+  useEffect(() => setMoreOpen(false), [location.pathname])
+
+  useEffect(() => {
+    if (!moreOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMoreOpen(false)
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [moreOpen])
 
   return (
     <div className="app-shell">
@@ -19,26 +87,22 @@ export function AppLayout() {
           <span>Meu Ritmo</span>
         </div>
 
-        <nav className="nav-list" aria-label="Navegação principal">
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end to="/"><CalendarDays size={19} /> Hoje</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/agenda"><CalendarClock size={19} /> Agenda</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/tarefas"><CheckSquare2 size={19} /> Tarefas</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/objetivos"><Target size={19} /> Objetivos</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/projetos"><FolderKanban size={19} /> Projetos</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/revisao"><CalendarCheck2 size={19} /> Revisão</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/revisao-semanal"><CalendarRange size={19} /> Semana</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/analises"><BarChart3 size={19} /> Análises</NavLink>
-          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/integracoes"><PlugZap size={19} /> Integrações</NavLink>
+        <nav className="desktop-navigation" aria-label="Navegação principal">
+          <div className="nav-group">
+            <span className="nav-group-label">Planejar</span>
+            <div className="nav-list">{mainNavigation.map((item) => <NavigationLink item={item} key={item.to} />)}</div>
+          </div>
+          <div className="nav-group">
+            <span className="nav-group-label">Acompanhar</span>
+            <div className="nav-list">{insightNavigation.map((item) => <NavigationLink item={item} key={item.to} />)}</div>
+          </div>
         </nav>
 
         <NotificationCenter />
 
         <div className="sidebar-footer">
           <div className="user-summary">
-            <span className="avatar">
-              {avatarInitial}
-              {avatarUrl && <img src={avatarUrl} alt={`Foto de ${displayName}`} referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true }} />}
-            </span>
+            <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
             <span><strong>{displayName}</strong><small>{user?.email}</small></span>
           </div>
           <button className="icon-button" type="button" onClick={() => void signOut()} aria-label="Sair">
@@ -46,7 +110,49 @@ export function AppLayout() {
           </button>
         </div>
       </aside>
+
+      <header className="mobile-header">
+        <div className="brand">
+          <span className="brand-mark"><Sparkles size={18} /></span>
+          <span>Meu Ritmo</span>
+        </div>
+        <div className="mobile-header-actions">
+          <NotificationCenter />
+          <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
+        </div>
+      </header>
+
       <main className="main-content"><Outlet /></main>
+
+      <nav className="mobile-bottom-nav" aria-label="Navegação móvel">
+        {mainNavigation.slice(0, 4).map((item) => <NavigationLink compact item={item} key={item.to} />)}
+        <button className={`mobile-nav-item ${moreIsActive ? 'active' : ''}`} type="button" onClick={() => setMoreOpen(true)} aria-expanded={moreOpen}>
+          <Menu size={20} />
+          <span>Mais</span>
+        </button>
+      </nav>
+
+      {moreOpen && (
+        <div className="mobile-more-overlay" role="presentation" onClick={() => setMoreOpen(false)}>
+          <aside className="mobile-more-sheet" role="dialog" aria-modal="true" aria-label="Mais opções" onClick={(event) => event.stopPropagation()}>
+            <div className="mobile-sheet-handle" />
+            <header>
+              <div><span className="eyebrow">Seu espaço</span><h2>Mais opções</h2></div>
+              <button className="icon-button light" type="button" onClick={() => setMoreOpen(false)} aria-label="Fechar menu"><X size={20} /></button>
+            </header>
+            <nav className="mobile-more-list">
+              {[mainNavigation[4], ...insightNavigation].map((item) => <NavigationLink item={item} key={item.to} />)}
+            </nav>
+            <footer>
+              <div className="user-summary">
+                <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
+                <span><strong>{displayName}</strong><small>{user?.email}</small></span>
+              </div>
+              <button className="secondary-button compact" type="button" onClick={() => void signOut()}><LogOut size={17} /> Sair</button>
+            </footer>
+          </aside>
+        </div>
+      )}
     </div>
   )
 }
