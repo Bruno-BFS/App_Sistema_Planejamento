@@ -10,6 +10,7 @@ import { TodayPage } from './pages/TodayPage'
 const TasksPage = lazy(() => import('./pages/TasksPage').then((module) => ({ default: module.TasksPage })))
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then((module) => ({ default: module.GoalsPage })))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })))
+const ReviewPage = lazy(() => import('./pages/ReviewPage').then((module) => ({ default: module.ReviewPage })))
 const PrivacyPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.PrivacyPage })))
 const TermsPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.TermsPage })))
 
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/tarefas" element={<Suspense fallback={<div className="page-state">Carregando tarefas…</div>}><TasksPage /></Suspense>} />
         <Route path="/objetivos" element={<Suspense fallback={<div className="page-state">Carregando objetivos…</div>}><GoalsPage /></Suspense>} />
         <Route path="/projetos" element={<Suspense fallback={<div className="page-state">Carregando projetos…</div>}><ProjectsPage /></Suspense>} />
+        <Route path="/revisao" element={<Suspense fallback={<div className="page-state">Carregando revisão…</div>}><ReviewPage /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
