@@ -120,6 +120,11 @@ h1, h2, h3, .brand { font-family: 'Manrope', sans-serif; }
 .goal-meta { flex-wrap: wrap; gap: 11px 16px; margin-top: 16px; color: #73776e; font-size: 12px; }.goal-meta span { display: inline-flex; align-items: center; gap: 5px; }.goal-meta .overdue { color: #a24b4f; }.goal-meta .completed-note { color: #4d7656; font-weight: 700; }
 .goal-warning, .goal-context-warning { margin-top: 14px; border-radius: 9px; font-size: 12px; }.goal-warning { display: flex; align-items: center; gap: 7px; padding: 10px 11px; color: #86532f; background: #fbebdc; }.goal-context-warning { padding-top: 12px; border-top: 1px dashed #d8d6c9; color: #777b70; }
 
+.project-form-card { gap: 20px; }.project-form-grid, .project-text-grid { grid-template-columns: repeat(3, 1fr); }
+.project-status.idea { color: #64645a; background: #edede6; }.project-status.blocked { color: #9a4b4e; background: #f6dcde; }
+.project-time { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 9px; color: #71756c; background: #f1f0e8; font-size: 12px; }.project-time span { display: flex; align-items: center; gap: 5px; }.project-time strong { color: #44483f; }
+.project-next-action { display: grid; gap: 4px; margin-top: 14px; padding: 11px 12px; border-left: 3px solid #8c9670; border-radius: 0 8px 8px 0; color: #5e6453; background: #f1f4e8; font-size: 12px; }.project-next-action strong { color: #43493a; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; }
+
 /* Visual language: modern, subtle skeuomorphism. */
 :root {
   --paper: #fffef9;
@@ -161,10 +166,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 @media (max-width: 800px) {
-  .app-shell { grid-template-columns: 1fr; }.sidebar { position: static; height: auto; padding: 16px; flex-direction: row; align-items: center; }.nav-list { margin: 0 0 0 auto; display: flex; }.nav-item { padding: 0 12px; }.nav-item.disabled, .sidebar-footer { display: none; }.today-page { width: min(100% - 28px, 700px); padding-top: 30px; }.stats-grid { grid-template-columns: 1fr; }.login-page { grid-template-columns: 1fr; }.login-intro { min-height: 44vh; }.quick-task { flex-wrap: wrap; }.quick-task > input { flex-basis: 100%; }.form-grid { grid-template-columns: 1fr; }.task-toolbar { align-items: stretch; flex-direction: column; }.search-field { width: 100%; }.goal-grid { grid-template-columns: 1fr; }.goal-toolbar { align-items: stretch; }.goal-text-grid, .goal-indicator-grid { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 1fr; }.sidebar { position: static; height: auto; padding: 16px; flex-direction: row; align-items: center; }.nav-list { margin: 0 0 0 auto; display: flex; }.nav-item { padding: 0 10px; }.nav-item.disabled, .sidebar-footer { display: none; }.today-page { width: min(100% - 28px, 700px); padding-top: 30px; }.stats-grid { grid-template-columns: 1fr; }.login-page { grid-template-columns: 1fr; }.login-intro { min-height: 44vh; }.quick-task { flex-wrap: wrap; }.quick-task > input { flex-basis: 100%; }.form-grid { grid-template-columns: 1fr; }.task-toolbar { align-items: stretch; flex-direction: column; }.search-field { width: 100%; }.goal-grid { grid-template-columns: 1fr; }.goal-toolbar { align-items: stretch; }.goal-text-grid, .goal-indicator-grid, .project-text-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 520px) {
-  .brand > span:last-child { display: none; }.nav-item { font-size: 0; min-height: 42px; }.page-header { flex-direction: column; }.page-header .primary-button { width: 100%; }.focus-card { flex-wrap: wrap; }.focus-copy { min-width: 150px; }.focus-card button { width: 100%; }.task-section { padding: 18px 15px; }.task-row { align-items: flex-start; }.focus-button { font-size: 0; padding: 0 10px; }.login-intro { padding: 34px 26px; }.login-panel { padding: 38px 24px; }
+  .brand > span:last-child { display: none; }.nav-item { font-size: 0; min-height: 42px; padding: 0 9px; }.page-header { flex-direction: column; }.page-header .primary-button { width: 100%; }.focus-card { flex-wrap: wrap; }.focus-copy { min-width: 150px; }.focus-card button { width: 100%; }.task-section { padding: 18px 15px; }.task-row { align-items: flex-start; }.focus-button { font-size: 0; padding: 0 10px; }.login-intro { padding: 34px 26px; }.login-panel { padding: 38px 24px; }.project-time { align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 480px) {
   .legal-header { align-items: flex-start; flex-direction: column; }.legal-back { margin-left: 50px; }

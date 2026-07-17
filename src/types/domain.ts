@@ -3,6 +3,7 @@ export type Priority = 'low' | 'medium' | 'high' | 'critical'
 export type GoalStatus = 'planned' | 'active' | 'at_risk' | 'paused' | 'completed' | 'cancelled'
 export type GoalHorizon = 'short' | 'medium' | 'long'
 export type GoalProgressMode = 'manual' | 'calculated'
+export type ProjectStatus = 'idea' | 'planned' | 'active' | 'blocked' | 'paused' | 'completed' | 'cancelled'
 
 export interface Task {
   id: string
@@ -61,4 +62,34 @@ export interface GoalMetric {
   open_tasks: number
   completed_tasks: number
   projects_count: number
+}
+
+export interface Project {
+  id: string
+  workspace_id: string
+  goal_id: string | null
+  title: string
+  description: string | null
+  area: string | null
+  status: ProjectStatus
+  priority: Priority
+  start_date: string | null
+  target_date: string | null
+  completed_at: string | null
+  expected_result: string | null
+  next_action: string | null
+  notes: string | null
+  last_activity_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectMetric {
+  project_id: string
+  total_tasks: number
+  open_tasks: number
+  completed_tasks: number
+  planned_minutes: number
+  actual_minutes: number
+  progress: number
 }
