@@ -10,7 +10,7 @@ import {
 } from '../services/planning'
 import type { CompanionType, DailyReview } from '../types/domain'
 
-const companions: CompanionType[] = ['fox', 'cat', 'robot', 'sprout']
+const companions: CompanionType[] = ['fox', 'cat', 'robot', 'sprout', 'owl', 'capybara']
 const moodOptions = [
   { value: 1, label: 'Muito difícil', emoji: '😞' },
   { value: 2, label: 'Difícil', emoji: '😕' },

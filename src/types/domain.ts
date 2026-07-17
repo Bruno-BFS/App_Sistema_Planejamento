@@ -4,7 +4,7 @@ export type GoalStatus = 'planned' | 'active' | 'at_risk' | 'paused' | 'complete
 export type GoalHorizon = 'short' | 'medium' | 'long'
 export type GoalProgressMode = 'manual' | 'calculated'
 export type ProjectStatus = 'idea' | 'planned' | 'active' | 'blocked' | 'paused' | 'completed' | 'cancelled'
-export type CompanionType = 'fox' | 'cat' | 'robot' | 'sprout'
+export type CompanionType = 'fox' | 'cat' | 'robot' | 'sprout' | 'owl' | 'capybara'
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly'
 
 export interface Task {
