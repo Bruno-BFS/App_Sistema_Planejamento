@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type {
-  AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
+  AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus, GoogleCalendarLink,
   NotificationPreferences, Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, RecurrenceFrequency,
   Reminder, Task, TaskRecurrence, WeeklyReview, WorkspaceMembership,
 } from '../types/domain'
@@ -107,6 +107,35 @@ export async function listUnscheduledTasks(workspaceId: string) {
 
   if (error) throw error
   return data as Task[]
+}
+
+export async function listGoogleCalendarLinks(workspaceId: string, userId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('google_calendar_links')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .order('synced_at', { ascending: false })
+
+  if (error) throw error
+  return data as GoogleCalendarLink[]
+}
+
+export async function syncTasksToGoogleCalendar(taskIds: string[], googleAccessToken: string) {
+  const client = requireClient()
+  const { data, error } = await client.functions.invoke('google-calendar-sync', {
+    body: { taskIds, googleAccessToken },
+  })
+  if (error) {
+    let message = 'Não foi possível sincronizar com o Google Calendar.'
+    if ('context' in error && error.context instanceof Response) {
+      const payload = await error.context.clone().json().catch(() => null) as { error?: string } | null
+      if (payload?.error) message = payload.error
+    }
+    throw new Error(message)
+  }
+  return data as { count: number; synced: Array<{ taskId: string; eventId: string; htmlLink: string | null }> }
 }
 
 export async function createTask(input: {

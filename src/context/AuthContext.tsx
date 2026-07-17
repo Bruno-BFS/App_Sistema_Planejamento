@@ -18,6 +18,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
       setLoading(false)
+      if (nextSession && window.sessionStorage.getItem('meu-ritmo:calendar-connect-pending') === 'true') {
+        window.sessionStorage.removeItem('meu-ritmo:calendar-connect-pending')
+        const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+        window.location.replace(`${basePath}/integracoes?calendar=connected`)
+      }
     })
 
     return () => data.subscription.unsubscribe()
@@ -40,6 +45,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         options: { redirectTo },
       })
       if (error) throw error
+    },
+    async connectGoogleCalendar() {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const redirectTo = new URL(import.meta.env.BASE_URL, window.location.origin).toString()
+      window.sessionStorage.setItem('meu-ritmo:calendar-connect-pending', 'true')
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          scopes: 'https://www.googleapis.com/auth/calendar.events',
+          queryParams: { include_granted_scopes: 'true', prompt: 'consent' },
+        },
+      })
+      if (error) {
+        window.sessionStorage.removeItem('meu-ritmo:calendar-connect-pending')
+        throw error
+      }
     },
     async signUp(email, password, name) {
       if (!supabase) throw new Error('Supabase não configurado.')

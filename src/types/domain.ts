@@ -192,3 +192,14 @@ export interface NotificationPreferences {
   review_reminder_time: string
   weekly_review_day: number
 }
+
+export interface GoogleCalendarLink {
+  id: string
+  workspace_id: string
+  user_id: string
+  task_id: string
+  calendar_id: string
+  google_event_id: string
+  html_link: string | null
+  synced_at: string
+}
