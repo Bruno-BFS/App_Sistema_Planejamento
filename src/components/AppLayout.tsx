@@ -1,5 +1,5 @@
 import { BarChart3, CalendarDays, CheckSquare2, LogOut, Sparkles, Target } from 'lucide-react'
-import { Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 
 export function AppLayout() {
@@ -14,8 +14,8 @@ export function AppLayout() {
         </div>
 
         <nav className="nav-list" aria-label="Navegação principal">
-          <a className="nav-item active" href="/"><CalendarDays size={19} /> Hoje</a>
-          <span className="nav-item disabled"><CheckSquare2 size={19} /> Tarefas <small>em breve</small></span>
+          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end to="/"><CalendarDays size={19} /> Hoje</NavLink>
+          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/tarefas"><CheckSquare2 size={19} /> Tarefas</NavLink>
           <span className="nav-item disabled"><Target size={19} /> Objetivos <small>em breve</small></span>
           <span className="nav-item disabled"><BarChart3 size={19} /> Análises <small>em breve</small></span>
         </nav>
