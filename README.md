@@ -22,6 +22,17 @@ O aplicativo utiliza **skeuomorphism moderno e sutil**: superfícies inspiradas 
 
 Nunca use a chave `service_role` no frontend.
 
+### Login com Google
+
+O provedor Google OAuth está habilitado no Supabase. O Client Secret permanece somente no backend do Supabase e nunca deve ser adicionado ao React, à Vercel ou ao GitHub.
+
+Para reaplicar `supabase/config.toml` com segurança, forneça as variáveis apenas no processo local da CLI:
+
+- `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`;
+- `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET`.
+
+As URLs de callback autorizadas ficam versionadas em `supabase/config.toml`, sem credenciais.
+
 ## Supabase remoto
 
 - Projeto: `nkrkjvknjwzfvmlhfhxl` (`Aplicativo Sistema Planejamento`)

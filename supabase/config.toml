@@ -31,6 +31,9 @@ enabled = true
 site_url = "https://app-sistema-planejamento.vercel.app"
 additional_redirect_urls = [
   "https://app-sistema-planejamento.vercel.app",
+  "https://app-sistema-planejamento.vercel.app/",
+  "https://app-sistema-planejamento-git-agent-google-login-appsera.vercel.app",
+  "https://app-sistema-planejamento-git-agent-google-login-appsera.vercel.app/",
   "https://bruno-bfs.github.io/App_Sistema_Planejamento/",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
@@ -55,3 +58,9 @@ max_enrolled_factors = 10
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false
