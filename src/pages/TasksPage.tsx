@@ -59,6 +59,7 @@ export function TasksPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId] }),
       queryClient.invalidateQueries({ queryKey: ['today-tasks', workspaceId] }),
+      queryClient.invalidateQueries({ queryKey: ['personal-reminders', workspaceId] }),
     ])
   }
 

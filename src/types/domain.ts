@@ -167,3 +167,28 @@ export interface WeeklyReview {
   created_at: string
   updated_at: string
 }
+
+export type ReminderKind = 'overdue_task' | 'today_task' | 'daily_review' | 'weekly_review'
+
+export interface Reminder {
+  reminder_key: string
+  kind: ReminderKind
+  title: string
+  body: string
+  action_path: string
+  priority: number
+  due_date: string | null
+}
+
+export interface NotificationPreferences {
+  id?: string
+  workspace_id: string
+  user_id: string
+  browser_enabled: boolean
+  task_reminders: boolean
+  daily_review_reminders: boolean
+  weekly_review_reminders: boolean
+  daily_digest_time: string
+  review_reminder_time: string
+  weekly_review_day: number
+}

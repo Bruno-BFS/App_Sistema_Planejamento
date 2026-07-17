@@ -1,6 +1,7 @@
 import { BarChart3, CalendarCheck2, CalendarDays, CalendarRange, CheckSquare2, FolderKanban, LogOut, Sparkles, Target } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { NotificationCenter } from './NotificationCenter'
 
 export function AppLayout() {
   const { user, signOut } = useAuth()
@@ -22,6 +23,8 @@ export function AppLayout() {
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/revisao-semanal"><CalendarRange size={19} /> Semana</NavLink>
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/analises"><BarChart3 size={19} /> Análises</NavLink>
         </nav>
+
+        <NotificationCenter />
 
         <div className="sidebar-footer">
           <div className="user-summary">

@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabase'
 import type {
   AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
-  Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, RecurrenceFrequency, Task, TaskRecurrence,
-  WeeklyReview, WorkspaceMembership,
+  NotificationPreferences, Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, RecurrenceFrequency,
+  Reminder, Task, TaskRecurrence, WeeklyReview, WorkspaceMembership,
 } from '../types/domain'
 
 function requireClient() {
@@ -579,5 +579,92 @@ export async function saveWeeklyReview(input: WeeklyReviewInput) {
 export async function deleteWeeklyReview(reviewId: string) {
   const client = requireClient()
   const { error } = await client.from('weekly_reviews').delete().eq('id', reviewId)
+  if (error) throw error
+}
+
+function currentWeekStart() {
+  const today = new Date()
+  const day = today.getDay() || 7
+  today.setDate(today.getDate() - day + 1)
+  return localDateStringFromDate(today)
+}
+
+function localDateStringFromDate(date: Date) {
+  const local = new Date(date)
+  local.setMinutes(local.getMinutes() - local.getTimezoneOffset())
+  return local.toISOString().slice(0, 10)
+}
+
+export async function getPersonalReminders(workspaceId: string) {
+  const client = requireClient()
+  await generateDueRecurringTasks(workspaceId)
+  const now = new Date()
+  const { data, error } = await client.rpc('get_personal_reminders', {
+    p_workspace_id: workspaceId,
+    p_local_date: localDateString(),
+    p_local_time: now.toTimeString().slice(0, 8),
+    p_week_start: currentWeekStart(),
+  })
+  if (error) throw error
+  return (data ?? []).map((row: Reminder & Record<string, number | string | null>) => ({
+    reminder_key: String(row.reminder_key),
+    kind: row.kind,
+    title: String(row.title),
+    body: String(row.body),
+    action_path: String(row.action_path),
+    priority: Number(row.priority),
+    due_date: row.due_date === null ? null : String(row.due_date),
+  })) as Reminder[]
+}
+
+export async function getNotificationPreferences(workspaceId: string, userId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('notification_preferences')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return (data ?? {
+    workspace_id: workspaceId,
+    user_id: userId,
+    browser_enabled: false,
+    task_reminders: true,
+    daily_review_reminders: true,
+    weekly_review_reminders: true,
+    daily_digest_time: '08:00:00',
+    review_reminder_time: '20:00:00',
+    weekly_review_day: 7,
+  }) as NotificationPreferences
+}
+
+export async function saveNotificationPreferences(preferences: NotificationPreferences) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('notification_preferences')
+    .upsert({
+      workspace_id: preferences.workspace_id,
+      user_id: preferences.user_id,
+      browser_enabled: preferences.browser_enabled,
+      task_reminders: preferences.task_reminders,
+      daily_review_reminders: preferences.daily_review_reminders,
+      weekly_review_reminders: preferences.weekly_review_reminders,
+      daily_digest_time: preferences.daily_digest_time,
+      review_reminder_time: preferences.review_reminder_time,
+      weekly_review_day: preferences.weekly_review_day,
+    }, { onConflict: 'workspace_id,user_id' })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as NotificationPreferences
+}
+
+export async function dismissReminder(workspaceId: string, reminderKey: string) {
+  const client = requireClient()
+  const { error } = await client.rpc('dismiss_personal_reminder', {
+    p_workspace_id: workspaceId,
+    p_reminder_key: reminderKey,
+  })
   if (error) throw error
 }
