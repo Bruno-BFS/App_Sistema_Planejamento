@@ -32,6 +32,14 @@ Nunca use a chave `service_role` no frontend.
 
 Após o cadastro, o aplicativo orienta o usuário a confirmar o link recebido antes do primeiro login.
 
+## Deploy
+
+O frontend é publicado automaticamente no GitHub Pages a cada atualização da branch `main`. O workflow executa instalação limpa, lint, build e deploy do artefato estático.
+
+- URL: `https://bruno-bfs.github.io/App_Sistema_Planejamento/`
+- Variáveis exigidas no GitHub Actions: `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`
+- Rotas diretas usam `404.html` como fallback da SPA
+
 ## MVP atual
 
 - cadastro e login por e-mail;
