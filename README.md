@@ -17,10 +17,20 @@ O aplicativo utiliza **skeuomorphism moderno e sutil**: superfícies inspiradas 
 
 1. Copie `.env.example` para `.env.local`.
 2. Preencha `VITE_SUPABASE_PUBLISHABLE_KEY` com a **Publishable key** do projeto.
-3. Aplique a migration de `supabase/migrations` no projeto `nkrkjvknjwzfvmlhfhxl`.
+3. Aplique as migrations de `supabase/migrations` no projeto `nkrkjvknjwzfvmlhfhxl`.
 4. Execute `npm run dev`.
 
 Nunca use a chave `service_role` no frontend.
+
+## Supabase remoto
+
+- Projeto: `nkrkjvknjwzfvmlhfhxl` (`Aplicativo Sistema Planejamento`)
+- PostgreSQL: versão 17
+- Migrations e políticas RLS aplicadas e validadas
+- Confirmação de e-mail permanece obrigatória
+- A URL e a Publishable key devem existir somente em `.env.local` ou nas variáveis do provedor de deploy
+
+Após o cadastro, o aplicativo orienta o usuário a confirmar o link recebido antes do primeiro login.
 
 ## MVP atual
 

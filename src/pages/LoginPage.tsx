@@ -10,6 +10,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   if (user) return <Navigate to="/" replace />
@@ -17,10 +18,17 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError('')
+    setSuccess('')
     setSubmitting(true)
     try {
-      if (mode === 'signup') await signUp(email, password, name)
-      else await signIn(email, password)
+      if (mode === 'signup') {
+        const signedIn = await signUp(email, password, name)
+        if (!signedIn) {
+          setSuccess('Conta criada. Confirme o link enviado ao seu e-mail e depois entre no aplicativo.')
+          setMode('login')
+          setPassword('')
+        }
+      } else await signIn(email, password)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível autenticar.')
     } finally {
@@ -45,11 +53,12 @@ export function LoginPage() {
           {mode === 'signup' && <label>Seu nome<input required value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>}
           <label>E-mail<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
           <label>Senha<input required minLength={8} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
+          {success && <p className="form-success" role="status">{success}</p>}
           {error && <p className="form-error">{error}</p>}
           <button className="primary-button" disabled={submitting} type="submit">
             {submitting ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'} <ArrowRight size={18} />
           </button>
-          <button className="text-button" type="button" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}>
+          <button className="text-button" type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}>
             {mode === 'login' ? 'Ainda não tenho conta' : 'Já tenho uma conta'}
           </button>
         </form>
