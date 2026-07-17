@@ -9,6 +9,10 @@ Aplicativo React para planejamento pessoal, tarefas e controle de tempo.
 - TanStack Query
 - React Router
 
+## Modelo visual
+
+O aplicativo utiliza **skeuomorphism moderno e sutil**: superfícies inspiradas em papel, controles táteis e profundidade moderada sobre uma estrutura limpa de SaaS. As regras e limites do sistema visual estão documentados em [`docs/visual-style.md`](docs/visual-style.md).
+
 ## Configuração
 
 1. Copie `.env.example` para `.env.local`.
