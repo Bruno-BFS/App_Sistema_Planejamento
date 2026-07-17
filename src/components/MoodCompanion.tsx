@@ -41,5 +41,5 @@ export function MoodCompanion({ type, mood, size = 'large', interactive = false,
   </svg>
 
   if (!interactive) return content
-  return <button className="companion-interaction" type="button" onClick={onInteract} aria-label={`Interagir com ${companionNames[type]}`}>{content}<small>Toque para interagir</small></button>
+  return <button className={`companion-interaction ${size}`} type="button" onClick={onInteract} aria-label={`Interagir com ${companionNames[type]}`}>{content}<small>Toque para interagir</small></button>
 }

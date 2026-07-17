@@ -5,8 +5,8 @@ import { useAuth } from './context/useAuth'
 import { isSupabaseConfigured } from './lib/supabase'
 import { LoginPage } from './pages/LoginPage'
 import { SetupPage } from './pages/SetupPage'
-import { TodayPage } from './pages/TodayPage'
 
+const TodayPage = lazy(() => import('./pages/TodayPage').then((module) => ({ default: module.TodayPage })))
 const TasksPage = lazy(() => import('./pages/TasksPage').then((module) => ({ default: module.TasksPage })))
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then((module) => ({ default: module.GoalsPage })))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })))
@@ -31,7 +31,7 @@ export default function App() {
       <Route path="/privacidade" element={<Suspense fallback={<div className="loading-screen">Carregando documento…</div>}><PrivacyPage /></Suspense>} />
       <Route path="/termos" element={<Suspense fallback={<div className="loading-screen">Carregando documento…</div>}><TermsPage /></Suspense>} />
       <Route element={<ProtectedApp />}>
-        <Route path="/" element={<TodayPage />} />
+        <Route path="/" element={<Suspense fallback={<div className="page-state">Carregando seu dia…</div>}><TodayPage /></Suspense>} />
         <Route path="/tarefas" element={<Suspense fallback={<div className="page-state">Carregando tarefas…</div>}><TasksPage /></Suspense>} />
         <Route path="/objetivos" element={<Suspense fallback={<div className="page-state">Carregando objetivos…</div>}><GoalsPage /></Suspense>} />
         <Route path="/projetos" element={<Suspense fallback={<div className="page-state">Carregando projetos…</div>}><ProjectsPage /></Suspense>} />
