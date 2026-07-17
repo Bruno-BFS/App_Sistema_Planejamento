@@ -61,6 +61,7 @@ O arquivo `vercel.json` mantém as rotas do React Router funcionais em acessos d
 
 Páginas públicas usadas no consentimento OAuth:
 
+- Página institucional: `https://app-sistema-planejamento.vercel.app/sobre.html`;
 - Política de Privacidade: `https://app-sistema-planejamento.vercel.app/privacidade`;
 - Termos de Uso: `https://app-sistema-planejamento.vercel.app/termos`.
 
