@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage'
 import { SetupPage } from './pages/SetupPage'
 
 const TodayPage = lazy(() => import('./pages/TodayPage').then((module) => ({ default: module.TodayPage })))
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then((module) => ({ default: module.CalendarPage })))
 const TasksPage = lazy(() => import('./pages/TasksPage').then((module) => ({ default: module.TasksPage })))
 const RecurringTasksPage = lazy(() => import('./pages/RecurringTasksPage').then((module) => ({ default: module.RecurringTasksPage })))
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then((module) => ({ default: module.GoalsPage })))
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/termos" element={<Suspense fallback={<div className="loading-screen">Carregando documento…</div>}><TermsPage /></Suspense>} />
       <Route element={<ProtectedApp />}>
         <Route path="/" element={<Suspense fallback={<div className="page-state">Carregando seu dia…</div>}><TodayPage /></Suspense>} />
+        <Route path="/agenda" element={<Suspense fallback={<div className="page-state">Montando sua agenda…</div>}><CalendarPage /></Suspense>} />
         <Route path="/tarefas" element={<Suspense fallback={<div className="page-state">Carregando tarefas…</div>}><TasksPage /></Suspense>} />
         <Route path="/rotinas" element={<Suspense fallback={<div className="page-state">Carregando rotinas…</div>}><RecurringTasksPage /></Suspense>} />
         <Route path="/objetivos" element={<Suspense fallback={<div className="page-state">Carregando objetivos…</div>}><GoalsPage /></Suspense>} />
