@@ -125,3 +125,21 @@ export interface AnalyticsDay {
   mood_score: number | null
   energy_score: number | null
 }
+
+export interface WeeklyReview {
+  id: string
+  workspace_id: string
+  user_id: string
+  week_start: string
+  biggest_win: string | null
+  main_challenge: string | null
+  key_learning: string | null
+  stop_doing: string | null
+  start_doing: string | null
+  continue_doing: string | null
+  next_week_priorities: string[]
+  weekly_intention: string | null
+  confidence_score: number
+  created_at: string
+  updated_at: string
+}

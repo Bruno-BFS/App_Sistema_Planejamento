@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type {
   AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
-  Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, Task, WorkspaceMembership,
+  Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, Task, WeeklyReview, WorkspaceMembership,
 } from '../types/domain'
 
 function requireClient() {
@@ -428,4 +428,76 @@ export async function getPersonalAnalytics(workspaceId: string, startDate: strin
     mood_score: row.mood_score === null ? null : Number(row.mood_score),
     energy_score: row.energy_score === null ? null : Number(row.energy_score),
   })) as AnalyticsDay[]
+}
+
+export interface WeeklyReviewInput {
+  workspaceId: string
+  userId: string
+  weekStart: string
+  biggestWin?: string
+  mainChallenge?: string
+  keyLearning?: string
+  stopDoing?: string
+  startDoing?: string
+  continueDoing?: string
+  priorities: string[]
+  weeklyIntention?: string
+  confidenceScore: number
+}
+
+export async function getWeeklyReview(workspaceId: string, userId: string, weekStart: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('weekly_reviews')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('week_start', weekStart)
+    .maybeSingle()
+  if (error) throw error
+  return data as WeeklyReview | null
+}
+
+export async function listRecentWeeklyReviews(workspaceId: string, userId: string, limit = 8) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('weekly_reviews')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .order('week_start', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data as WeeklyReview[]
+}
+
+export async function saveWeeklyReview(input: WeeklyReviewInput) {
+  const client = requireClient()
+  const priorities = input.priorities.map((item) => item.trim()).filter(Boolean).slice(0, 3)
+  const { data, error } = await client
+    .from('weekly_reviews')
+    .upsert({
+      workspace_id: input.workspaceId,
+      user_id: input.userId,
+      week_start: input.weekStart,
+      biggest_win: input.biggestWin?.trim() || null,
+      main_challenge: input.mainChallenge?.trim() || null,
+      key_learning: input.keyLearning?.trim() || null,
+      stop_doing: input.stopDoing?.trim() || null,
+      start_doing: input.startDoing?.trim() || null,
+      continue_doing: input.continueDoing?.trim() || null,
+      next_week_priorities: priorities,
+      weekly_intention: input.weeklyIntention?.trim() || null,
+      confidence_score: input.confidenceScore,
+    }, { onConflict: 'workspace_id,user_id,week_start' })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as WeeklyReview
+}
+
+export async function deleteWeeklyReview(reviewId: string) {
+  const client = requireClient()
+  const { error } = await client.from('weekly_reviews').delete().eq('id', reviewId)
+  if (error) throw error
 }
