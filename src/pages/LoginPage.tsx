@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 
@@ -85,6 +85,7 @@ export function LoginPage() {
           <button className="text-button" type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}>
             {mode === 'login' ? 'Ainda não tenho conta' : 'Já tenho uma conta'}
           </button>
+          <div className="auth-legal-links"><Link to="/privacidade">Privacidade</Link><span aria-hidden="true">•</span><Link to="/termos">Termos de uso</Link></div>
         </form>
       </section>
     </main>

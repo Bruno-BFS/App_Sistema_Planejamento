@@ -8,6 +8,8 @@ import { SetupPage } from './pages/SetupPage'
 import { TodayPage } from './pages/TodayPage'
 
 const TasksPage = lazy(() => import('./pages/TasksPage').then((module) => ({ default: module.TasksPage })))
+const PrivacyPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.PrivacyPage })))
+const TermsPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.TermsPage })))
 
 function ProtectedApp() {
   const { user, loading } = useAuth()
@@ -23,6 +25,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/privacidade" element={<Suspense fallback={<div className="loading-screen">Carregando documento…</div>}><PrivacyPage /></Suspense>} />
+      <Route path="/termos" element={<Suspense fallback={<div className="loading-screen">Carregando documento…</div>}><TermsPage /></Suspense>} />
       <Route element={<ProtectedApp />}>
         <Route path="/" element={<TodayPage />} />
         <Route path="/tarefas" element={<Suspense fallback={<div className="page-state">Carregando tarefas…</div>}><TasksPage /></Suspense>} />
