@@ -34,11 +34,23 @@ Após o cadastro, o aplicativo orienta o usuário a confirmar o link recebido an
 
 ## Deploy
 
-O frontend é publicado automaticamente no GitHub Pages a cada atualização da branch `main`. O workflow executa instalação limpa, lint, build e deploy do artefato estático.
+### Vercel (produção recomendada)
 
-- URL: `https://bruno-bfs.github.io/App_Sistema_Planejamento/`
-- Variáveis exigidas no GitHub Actions: `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`
-- Rotas diretas usam `404.html` como fallback da SPA
+Importe o repositório `Bruno-BFS/App_Sistema_Planejamento` na Vercel e configure:
+
+- Framework Preset: `Vite`;
+- Build Command: `npm run build`;
+- Output Directory: `dist`;
+- Production Branch: `main`;
+- variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes Production e Preview.
+
+O arquivo `vercel.json` mantém as rotas do React Router funcionais em acessos diretos, como `/tarefas`. Nunca configure `service_role` no frontend ou na Vercel.
+
+### GitHub Pages (mantido durante a transição)
+
+O workflow atual continua publicando a branch `main` em `https://bruno-bfs.github.io/App_Sistema_Planejamento/`, executando instalação limpa, lint e build. As variáveis exigidas no GitHub Actions são `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
+
+Após validar a URL da Vercel e atualizar as URLs permitidas no Supabase Auth, o GitHub Pages poderá ser desativado em uma mudança separada.
 
 ## MVP atual
 
