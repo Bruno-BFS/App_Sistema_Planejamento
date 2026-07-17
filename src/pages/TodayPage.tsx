@@ -66,6 +66,7 @@ export function TodayPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['today-tasks', workspaceId] }),
       queryClient.invalidateQueries({ queryKey: ['active-focus', workspaceId] }),
+      queryClient.invalidateQueries({ queryKey: ['personal-reminders', workspaceId] }),
     ])
   }
 
