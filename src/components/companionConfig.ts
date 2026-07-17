@@ -5,4 +5,6 @@ export const companionNames: Record<CompanionType, string> = {
   cat: 'Nina, a gata',
   robot: 'Pingo, o robô',
   sprout: 'Broto, a plantinha',
+  owl: 'Cora, a coruja',
+  capybara: 'Bento, a capivara',
 }
