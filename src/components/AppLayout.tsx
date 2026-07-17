@@ -5,6 +5,11 @@ import { NotificationCenter } from './NotificationCenter'
 
 export function AppLayout() {
   const { user, signOut } = useAuth()
+  const displayName = user?.user_metadata.full_name ?? user?.user_metadata.name ?? 'Minha conta'
+  const avatarUrl = user?.user_metadata.avatar_url ?? user?.user_metadata.picture
+  const avatarInitial = displayName === 'Minha conta'
+    ? user?.email?.slice(0, 1).toUpperCase()
+    : displayName.slice(0, 1).toUpperCase()
 
   return (
     <div className="app-shell">
@@ -30,8 +35,11 @@ export function AppLayout() {
 
         <div className="sidebar-footer">
           <div className="user-summary">
-            <span className="avatar">{user?.email?.slice(0, 1).toUpperCase()}</span>
-            <span><strong>{user?.user_metadata.name ?? 'Minha conta'}</strong><small>{user?.email}</small></span>
+            <span className="avatar">
+              {avatarInitial}
+              {avatarUrl && <img src={avatarUrl} alt={`Foto de ${displayName}`} referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true }} />}
+            </span>
+            <span><strong>{displayName}</strong><small>{user?.email}</small></span>
           </div>
           <button className="icon-button" type="button" onClick={() => void signOut()} aria-label="Sair">
             <LogOut size={18} />
