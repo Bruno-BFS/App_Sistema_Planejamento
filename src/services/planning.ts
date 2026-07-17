@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase'
 import type {
   AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
-  Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, Task, WeeklyReview, WorkspaceMembership,
+  Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, RecurrenceFrequency, Task, TaskRecurrence,
+  WeeklyReview, WorkspaceMembership,
 } from '../types/domain'
 
 function requireClient() {
@@ -13,6 +14,16 @@ function localDateString() {
   const date = new Date()
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
   return date.toISOString().slice(0, 10)
+}
+
+export async function generateDueRecurringTasks(workspaceId: string, throughDate = localDateString()) {
+  const client = requireClient()
+  const { data, error } = await client.rpc('generate_due_recurring_tasks', {
+    p_workspace_id: workspaceId,
+    p_through_date: throughDate,
+  })
+  if (error) throw error
+  return Number(data ?? 0)
 }
 
 export async function getDefaultWorkspace() {
@@ -31,6 +42,7 @@ export async function getDefaultWorkspace() {
 export async function listTodayTasks(workspaceId: string) {
   const today = localDateString()
   const client = requireClient()
+  await generateDueRecurringTasks(workspaceId, today)
   const { data, error } = await client
     .from('tasks')
     .select('*')
@@ -46,6 +58,7 @@ export async function listTodayTasks(workspaceId: string) {
 
 export async function listTasks(workspaceId: string) {
   const client = requireClient()
+  await generateDueRecurringTasks(workspaceId)
   const { data, error } = await client
     .from('tasks')
     .select('*')
@@ -101,6 +114,73 @@ export async function updateTask(taskId: string, values: Partial<Pick<Task,
 export async function deleteTask(taskId: string) {
   const client = requireClient()
   const { error } = await client.from('tasks').delete().eq('id', taskId)
+  if (error) throw error
+}
+
+export interface TaskRecurrenceInput {
+  workspaceId: string
+  title: string
+  description?: string
+  priority: Priority
+  estimatedMinutes: number
+  frequency: RecurrenceFrequency
+  intervalCount: number
+  startDate: string
+  endDate?: string | null
+  goalId?: string | null
+  projectId?: string | null
+}
+
+export async function listTaskRecurrences(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('task_recurrences')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('is_active', { ascending: false })
+    .order('next_occurrence', { ascending: true })
+  if (error) throw error
+  return data as TaskRecurrence[]
+}
+
+export async function createTaskRecurrence(input: TaskRecurrenceInput) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('task_recurrences')
+    .insert({
+      workspace_id: input.workspaceId,
+      title: input.title.trim(),
+      description: input.description?.trim() || null,
+      priority: input.priority,
+      estimated_minutes: input.estimatedMinutes,
+      frequency: input.frequency,
+      interval_count: input.intervalCount,
+      start_date: input.startDate,
+      end_date: input.endDate || null,
+      next_occurrence: input.startDate,
+      goal_id: input.goalId || null,
+      project_id: input.projectId || null,
+    })
+    .select('*')
+    .single()
+  if (error) throw error
+  await generateDueRecurringTasks(input.workspaceId)
+  return data as TaskRecurrence
+}
+
+export async function setTaskRecurrenceActive(recurrenceId: string, active: boolean) {
+  const client = requireClient()
+  const { error } = await client.rpc('set_task_recurrence_active', {
+    p_recurrence_id: recurrenceId,
+    p_is_active: active,
+    p_today: localDateString(),
+  })
+  if (error) throw error
+}
+
+export async function deleteTaskRecurrence(recurrenceId: string) {
+  const client = requireClient()
+  const { error } = await client.from('task_recurrences').delete().eq('id', recurrenceId)
   if (error) throw error
 }
 
