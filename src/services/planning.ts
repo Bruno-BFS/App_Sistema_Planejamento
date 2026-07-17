@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type {
-  FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
-  Priority, Project, ProjectMetric, ProjectStatus, Task, WorkspaceMembership,
+  CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
+  Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, Task, WorkspaceMembership,
 } from '../types/domain'
 
 function requireClient() {
@@ -325,5 +325,87 @@ export async function updateProject(projectId: string, input: ProjectInput) {
 export async function deleteProject(projectId: string) {
   const client = requireClient()
   const { error } = await client.from('projects').delete().eq('id', projectId)
+  if (error) throw error
+}
+
+export async function getProfilePreferences(userId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('profiles')
+    .select('id, name, companion_type')
+    .eq('id', userId)
+    .single()
+  if (error) throw error
+  return data as ProfilePreferences
+}
+
+export async function updateCompanion(userId: string, companion: CompanionType) {
+  const client = requireClient()
+  const { error } = await client.from('profiles').update({ companion_type: companion }).eq('id', userId)
+  if (error) throw error
+}
+
+export interface DailyReviewInput {
+  workspaceId: string
+  userId: string
+  reviewDate?: string
+  wins?: string
+  challenges?: string
+  learnings?: string
+  tomorrowIntention?: string
+  moodScore: number
+  energyScore: number
+}
+
+export async function getDailyReview(workspaceId: string, userId: string, reviewDate = localDateString()) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('daily_reviews')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .eq('review_date', reviewDate)
+    .maybeSingle()
+  if (error) throw error
+  return data as DailyReview | null
+}
+
+export async function listRecentReviews(workspaceId: string, userId: string, limit = 14) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('daily_reviews')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .order('review_date', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data as DailyReview[]
+}
+
+export async function saveDailyReview(input: DailyReviewInput) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('daily_reviews')
+    .upsert({
+      workspace_id: input.workspaceId,
+      user_id: input.userId,
+      review_date: input.reviewDate || localDateString(),
+      wins: input.wins?.trim() || null,
+      challenges: input.challenges?.trim() || null,
+      learnings: input.learnings?.trim() || null,
+      tomorrow_intention: input.tomorrowIntention?.trim() || null,
+      mood_score: input.moodScore,
+      energy_score: input.energyScore,
+    }, { onConflict: 'workspace_id,user_id,review_date' })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as DailyReview
+}
+
+export async function deleteDailyReview(reviewId: string) {
+  const client = requireClient()
+  const { error } = await client.from('daily_reviews').delete().eq('id', reviewId)
   if (error) throw error
 }

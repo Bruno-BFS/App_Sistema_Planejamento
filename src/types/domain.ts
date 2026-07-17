@@ -4,6 +4,7 @@ export type GoalStatus = 'planned' | 'active' | 'at_risk' | 'paused' | 'complete
 export type GoalHorizon = 'short' | 'medium' | 'long'
 export type GoalProgressMode = 'manual' | 'calculated'
 export type ProjectStatus = 'idea' | 'planned' | 'active' | 'blocked' | 'paused' | 'completed' | 'cancelled'
+export type CompanionType = 'fox' | 'cat' | 'robot' | 'sprout'
 
 export interface Task {
   id: string
@@ -92,4 +93,25 @@ export interface ProjectMetric {
   planned_minutes: number
   actual_minutes: number
   progress: number
+}
+
+export interface ProfilePreferences {
+  id: string
+  name: string
+  companion_type: CompanionType
+}
+
+export interface DailyReview {
+  id: string
+  workspace_id: string
+  user_id: string
+  review_date: string
+  wins: string | null
+  challenges: string | null
+  learnings: string | null
+  tomorrow_intention: string | null
+  mood_score: number | null
+  energy_score: number | null
+  created_at: string
+  updated_at: string
 }
