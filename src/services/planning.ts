@@ -72,6 +72,43 @@ export async function listTasks(workspaceId: string) {
   return data as Task[]
 }
 
+export async function listCalendarTasks(workspaceId: string, startDate: string, endDate: string) {
+  const client = requireClient()
+  const generationLimit = new Date()
+  generationLimit.setDate(generationLimit.getDate() + 7)
+  await generateDueRecurringTasks(workspaceId, endDate < localDateStringFromDate(generationLimit) ? endDate : localDateStringFromDate(generationLimit))
+  const { data, error } = await client
+    .from('tasks')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .neq('status', 'cancelled')
+    .gte('planned_date', startDate)
+    .lte('planned_date', endDate)
+    .order('planned_date')
+    .order('position')
+    .order('created_at')
+
+  if (error) throw error
+  return data as Task[]
+}
+
+export async function listUnscheduledTasks(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('tasks')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .is('planned_date', null)
+    .neq('status', 'completed')
+    .neq('status', 'cancelled')
+    .order('priority', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) throw error
+  return data as Task[]
+}
+
 export async function createTask(input: {
   workspaceId: string
   title: string
