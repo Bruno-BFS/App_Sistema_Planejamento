@@ -36,7 +36,9 @@ Após o cadastro, o aplicativo orienta o usuário a confirmar o link recebido an
 
 ### Vercel (produção recomendada)
 
-Importe o repositório `Bruno-BFS/App_Sistema_Planejamento` na Vercel e configure:
+O aplicativo está publicado em `https://app-sistema-planejamento.vercel.app` e conectado ao repositório `Bruno-BFS/App_Sistema_Planejamento`. Cada atualização da branch `main` gera automaticamente um novo deploy de produção.
+
+Configuração atual:
 
 - Framework Preset: `Vite`;
 - Build Command: `npm run build`;
@@ -44,13 +46,13 @@ Importe o repositório `Bruno-BFS/App_Sistema_Planejamento` na Vercel e configur
 - Production Branch: `main`;
 - variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` nos ambientes Production e Preview.
 
-O arquivo `vercel.json` mantém as rotas do React Router funcionais em acessos diretos, como `/tarefas`. Nunca configure `service_role` no frontend ou na Vercel.
+O arquivo `vercel.json` mantém as rotas do React Router funcionais em acessos diretos, como `/tarefas`. A URL da Vercel também é a `site_url` do Supabase Auth. Nunca configure `service_role` no frontend ou na Vercel.
 
 ### GitHub Pages (mantido durante a transição)
 
 O workflow atual continua publicando a branch `main` em `https://bruno-bfs.github.io/App_Sistema_Planejamento/`, executando instalação limpa, lint e build. As variáveis exigidas no GitHub Actions são `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
-Após validar a URL da Vercel e atualizar as URLs permitidas no Supabase Auth, o GitHub Pages poderá ser desativado em uma mudança separada.
+O GitHub Pages pode ser desativado em uma mudança separada depois de confirmar o fluxo de cadastro e login por e-mail em produção.
 
 ## MVP atual
 
