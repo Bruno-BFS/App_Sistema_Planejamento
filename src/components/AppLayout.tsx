@@ -19,7 +19,7 @@ export function AppLayout() {
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/objetivos"><Target size={19} /> Objetivos</NavLink>
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/projetos"><FolderKanban size={19} /> Projetos</NavLink>
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/revisao"><CalendarCheck2 size={19} /> Revisão</NavLink>
-          <span className="nav-item disabled"><BarChart3 size={19} /> Análises <small>em breve</small></span>
+          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/analises"><BarChart3 size={19} /> Análises</NavLink>
         </nav>
 
         <div className="sidebar-footer">
