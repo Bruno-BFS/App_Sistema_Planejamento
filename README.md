@@ -64,6 +64,8 @@ Páginas públicas usadas no consentimento OAuth:
 - Política de Privacidade: `https://app-sistema-planejamento.vercel.app/privacidade`;
 - Termos de Uso: `https://app-sistema-planejamento.vercel.app/termos`.
 
+O arquivo `public/google903991729b07d044.html` mantém a propriedade da URL da Vercel verificada no Google Search Console e não deve ser removido.
+
 ### GitHub Pages (mantido durante a transição)
 
 O workflow atual continua publicando a branch `main` em `https://bruno-bfs.github.io/App_Sistema_Planejamento/`, executando instalação limpa, lint e build. As variáveis exigidas no GitHub Actions são `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
