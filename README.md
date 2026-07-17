@@ -24,8 +24,10 @@ Nunca use a chave `service_role` no frontend.
 - workspace pessoal criado automaticamente;
 - tela Hoje responsiva;
 - criação e conclusão de tarefas;
+- gestão de tarefas com descrição, data, busca, filtros e exclusão;
 - prioridades e estimativa de tempo;
 - cronômetro persistido no servidor;
+- datas calculadas no fuso horário local do usuário;
 - isolamento multi-tenant por workspace e políticas RLS.
 
 ## Comandos

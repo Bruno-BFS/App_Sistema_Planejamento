@@ -6,6 +6,12 @@ function requireClient() {
   return supabase
 }
 
+function localDateString() {
+  const date = new Date()
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+  return date.toISOString().slice(0, 10)
+}
+
 export async function getDefaultWorkspace() {
   const client = requireClient()
   const { data, error } = await client
@@ -20,7 +26,7 @@ export async function getDefaultWorkspace() {
 }
 
 export async function listTodayTasks(workspaceId: string) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateString()
   const client = requireClient()
   const { data, error } = await client
     .from('tasks')
@@ -35,11 +41,28 @@ export async function listTodayTasks(workspaceId: string) {
   return data as Task[]
 }
 
+export async function listTasks(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('tasks')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .neq('status', 'cancelled')
+    .order('planned_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(500)
+
+  if (error) throw error
+  return data as Task[]
+}
+
 export async function createTask(input: {
   workspaceId: string
   title: string
   priority: Priority
   estimatedMinutes: number
+  description?: string
+  plannedDate?: string | null
 }) {
   const client = requireClient()
   const { data, error } = await client
@@ -49,7 +72,8 @@ export async function createTask(input: {
       title: input.title,
       priority: input.priority,
       estimated_minutes: input.estimatedMinutes,
-      planned_date: new Date().toISOString().slice(0, 10),
+      description: input.description?.trim() || null,
+      planned_date: input.plannedDate === undefined ? localDateString() : input.plannedDate,
       status: 'planned',
     })
     .select('*')
@@ -57,6 +81,20 @@ export async function createTask(input: {
 
   if (error) throw error
   return data as Task
+}
+
+export async function updateTask(taskId: string, values: Partial<Pick<Task,
+  'title' | 'description' | 'priority' | 'planned_date' | 'estimated_minutes' | 'status' | 'completed_at'
+>>) {
+  const client = requireClient()
+  const { error } = await client.from('tasks').update(values).eq('id', taskId)
+  if (error) throw error
+}
+
+export async function deleteTask(taskId: string) {
+  const client = requireClient()
+  const { error } = await client.from('tasks').delete().eq('id', taskId)
+  if (error) throw error
 }
 
 export async function setTaskCompleted(taskId: string, completed: boolean) {
