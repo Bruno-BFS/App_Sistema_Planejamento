@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, Clock3, FolderKanban, Inbox, Plus, Search, Target, Trash2, X } from 'lucide-react'
+import { CalendarDays, Check, Clock3, FolderKanban, Inbox, Plus, Repeat2, Search, Target, Trash2, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { createTask, deleteTask, getDefaultWorkspace, listGoals, listProjects, listTasks, setTaskCompleted } from '../services/planning'
 import type { Priority, Task } from '../types/domain'
 
@@ -128,7 +129,7 @@ export function TasksPage() {
     <div className="today-page tasks-page">
       <header className="page-header">
         <div><span className="eyebrow">Organização</span><h1>Suas tarefas</h1><p>Capture, priorize e acompanhe tudo que precisa avançar.</p></div>
-        <button className="primary-button compact" type="button" onClick={() => setShowForm(true)}><Plus size={18} /> Nova tarefa</button>
+        <div className="page-header-actions"><Link className="secondary-button compact" to="/rotinas"><Repeat2 size={17} /> Rotinas</Link><button className="primary-button compact" type="button" onClick={() => setShowForm(true)}><Plus size={18} /> Nova tarefa</button></div>
       </header>
 
       <section className="stats-grid compact-stats">
@@ -176,7 +177,7 @@ export function TasksPage() {
             return (
               <article className={`task-row detailed ${done ? 'done' : ''}`} key={task.id}>
                 <button className="check-button" type="button" onClick={() => completeMutation.mutate({ task, completed: !done })} aria-label={done ? 'Reabrir tarefa' : 'Concluir tarefa'}>{done && <Check size={16} />}</button>
-                <div className="task-copy"><strong>{task.title}</strong>{task.description && <p>{task.description}</p>}<span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em><small><CalendarDays size={14} /> {formatDate(task.planned_date)}</small><small><Clock3 size={14} /> {task.estimated_minutes} min</small>{task.project_id && projectMap.get(task.project_id) && <small><FolderKanban size={14} /> {projectMap.get(task.project_id)}</small>}{task.goal_id && goalMap.get(task.goal_id) && <small><Target size={14} /> {goalMap.get(task.goal_id)}</small>}</span></div>
+                <div className="task-copy"><strong>{task.title}</strong>{task.description && <p>{task.description}</p>}<span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em>{task.recurrence_id && <small className="recurring-task-label"><Repeat2 size={14} /> Recorrente</small>}<small><CalendarDays size={14} /> {formatDate(task.planned_date)}</small><small><Clock3 size={14} /> {task.estimated_minutes} min</small>{task.project_id && projectMap.get(task.project_id) && <small><FolderKanban size={14} /> {projectMap.get(task.project_id)}</small>}{task.goal_id && goalMap.get(task.goal_id) && <small><Target size={14} /> {goalMap.get(task.goal_id)}</small>}</span></div>
                 <button className="icon-button danger" type="button" onClick={() => confirmDelete(task)} aria-label={`Excluir ${task.title}`} disabled={deleteMutation.isPending}><Trash2 size={18} /></button>
               </article>
             )

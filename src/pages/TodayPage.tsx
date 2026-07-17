@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, Clock3, Flame, Heart, Plus, Square, Timer, Zap } from 'lucide-react'
+import { CalendarDays, Check, Clock3, Flame, Heart, Plus, Repeat2, Square, Timer, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { MoodCompanion } from '../components/MoodCompanion'
 import { companionNames } from '../components/companionConfig'
@@ -180,7 +180,7 @@ export function TodayPage() {
             return (
               <article className={`task-row ${done ? 'done' : ''}`} key={task.id}>
                 <button className="check-button" type="button" onClick={() => completeMutation.mutate({ id: task.id, completed: !done })} aria-label={done ? 'Reabrir tarefa' : 'Concluir tarefa'}>{done && <Check size={16} />}</button>
-                <div className="task-copy"><strong>{task.title}</strong><span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em><small><Clock3 size={14} /> {task.estimated_minutes} min</small></span></div>
+                <div className="task-copy"><strong>{task.title}</strong><span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em>{task.recurrence_id && <small className="recurring-task-label"><Repeat2 size={14} /> Recorrente</small>}<small><Clock3 size={14} /> {task.estimated_minutes} min</small></span></div>
                 {!done && !focusQuery.data && <button className="focus-button" type="button" onClick={() => startMutation.mutate(task.id)}><Timer size={17} /> Focar</button>}
                 {inFocus && <span className="live-badge">Em foco</span>}
               </article>

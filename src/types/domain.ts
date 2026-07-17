@@ -5,6 +5,7 @@ export type GoalHorizon = 'short' | 'medium' | 'long'
 export type GoalProgressMode = 'manual' | 'calculated'
 export type ProjectStatus = 'idea' | 'planned' | 'active' | 'blocked' | 'paused' | 'completed' | 'cancelled'
 export type CompanionType = 'fox' | 'cat' | 'robot' | 'sprout'
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly'
 
 export interface Task {
   id: string
@@ -19,7 +20,30 @@ export interface Task {
   project_id: string | null
   goal_id: string | null
   completed_at: string | null
+  recurrence_id: string | null
+  occurrence_date: string | null
   created_at: string
+}
+
+export interface TaskRecurrence {
+  id: string
+  workspace_id: string
+  project_id: string | null
+  goal_id: string | null
+  created_by: string
+  title: string
+  description: string | null
+  priority: Priority
+  estimated_minutes: number
+  frequency: RecurrenceFrequency
+  interval_count: number
+  start_date: string
+  end_date: string | null
+  next_occurrence: string
+  last_generated_date: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface WorkspaceMembership {
