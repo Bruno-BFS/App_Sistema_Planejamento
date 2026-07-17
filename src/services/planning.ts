@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type {
   FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
-  Priority, Task, WorkspaceMembership,
+  Priority, Project, ProjectMetric, ProjectStatus, Task, WorkspaceMembership,
 } from '../types/domain'
 
 function requireClient() {
@@ -67,6 +67,7 @@ export async function createTask(input: {
   description?: string
   plannedDate?: string | null
   goalId?: string | null
+  projectId?: string | null
 }) {
   const client = requireClient()
   const { data, error } = await client
@@ -79,6 +80,7 @@ export async function createTask(input: {
       description: input.description?.trim() || null,
       planned_date: input.plannedDate === undefined ? localDateString() : input.plannedDate,
       goal_id: input.goalId || null,
+      project_id: input.projectId || null,
       status: 'planned',
     })
     .select('*')
@@ -242,5 +244,86 @@ export async function updateGoal(goalId: string, input: GoalInput) {
 export async function deleteGoal(goalId: string) {
   const client = requireClient()
   const { error } = await client.from('goals').delete().eq('id', goalId)
+  if (error) throw error
+}
+
+export interface ProjectInput {
+  workspaceId: string
+  goalId?: string | null
+  title: string
+  description?: string
+  area?: string
+  status: ProjectStatus
+  priority: Priority
+  startDate?: string | null
+  targetDate?: string | null
+  expectedResult?: string
+  nextAction?: string
+  notes?: string
+}
+
+function projectPayload(input: ProjectInput) {
+  return {
+    workspace_id: input.workspaceId,
+    goal_id: input.goalId || null,
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    area: input.area?.trim() || null,
+    status: input.status,
+    priority: input.priority,
+    start_date: input.startDate || null,
+    target_date: input.targetDate || null,
+    expected_result: input.expectedResult?.trim() || null,
+    next_action: input.nextAction?.trim() || null,
+    notes: input.notes?.trim() || null,
+  }
+}
+
+export async function listProjects(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('projects')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .neq('status', 'cancelled')
+    .order('target_date', { ascending: true, nullsFirst: false })
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+  return data as Project[]
+}
+
+export async function listProjectMetrics(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client.rpc('get_project_metrics', { p_workspace_id: workspaceId })
+  if (error) throw error
+  const rows = (data ?? []) as Array<Record<keyof ProjectMetric, number | string>>
+  return rows.map((metric) => ({
+    project_id: String(metric.project_id),
+    total_tasks: Number(metric.total_tasks),
+    open_tasks: Number(metric.open_tasks),
+    completed_tasks: Number(metric.completed_tasks),
+    planned_minutes: Number(metric.planned_minutes),
+    actual_minutes: Number(metric.actual_minutes),
+    progress: Number(metric.progress),
+  })) as ProjectMetric[]
+}
+
+export async function createProject(input: ProjectInput) {
+  const client = requireClient()
+  const { data, error } = await client.from('projects').insert(projectPayload(input)).select('*').single()
+  if (error) throw error
+  return data as Project
+}
+
+export async function updateProject(projectId: string, input: ProjectInput) {
+  const client = requireClient()
+  const { data, error } = await client.from('projects').update(projectPayload(input)).eq('id', projectId).select('*').single()
+  if (error) throw error
+  return data as Project
+}
+
+export async function deleteProject(projectId: string) {
+  const client = requireClient()
+  const { error } = await client.from('projects').delete().eq('id', projectId)
   if (error) throw error
 }
