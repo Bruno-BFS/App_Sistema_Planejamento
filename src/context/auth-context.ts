@@ -6,6 +6,7 @@ export interface AuthState {
   session: Session | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<boolean>
   signOut: () => Promise<void>
 }

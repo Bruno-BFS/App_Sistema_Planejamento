@@ -32,6 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
     },
+    async signInWithGoogle() {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const redirectTo = new URL(import.meta.env.BASE_URL, window.location.origin).toString()
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      })
+      if (error) throw error
+    },
     async signUp(email, password, name) {
       if (!supabase) throw new Error('Supabase não configurado.')
       const { data, error } = await supabase.auth.signUp({
