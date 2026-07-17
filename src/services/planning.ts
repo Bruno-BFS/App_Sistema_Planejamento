@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type {
-  CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
+  AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
   Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, Task, WorkspaceMembership,
 } from '../types/domain'
 
@@ -408,4 +408,24 @@ export async function deleteDailyReview(reviewId: string) {
   const client = requireClient()
   const { error } = await client.from('daily_reviews').delete().eq('id', reviewId)
   if (error) throw error
+}
+
+export async function getPersonalAnalytics(workspaceId: string, startDate: string, endDate: string) {
+  const client = requireClient()
+  const { data, error } = await client.rpc('get_personal_analytics', {
+    p_workspace_id: workspaceId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  })
+  if (error) throw error
+  const rows = (data ?? []) as Array<AnalyticsDay & Record<string, number | string | null>>
+  return rows.map((row) => ({
+    day: String(row.day),
+    planned_tasks: Number(row.planned_tasks),
+    completed_tasks: Number(row.completed_tasks),
+    planned_minutes: Number(row.planned_minutes),
+    focus_minutes: Number(row.focus_minutes),
+    mood_score: row.mood_score === null ? null : Number(row.mood_score),
+    energy_score: row.energy_score === null ? null : Number(row.energy_score),
+  })) as AnalyticsDay[]
 }

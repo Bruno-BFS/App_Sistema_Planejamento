@@ -115,3 +115,13 @@ export interface DailyReview {
   created_at: string
   updated_at: string
 }
+
+export interface AnalyticsDay {
+  day: string
+  planned_tasks: number
+  completed_tasks: number
+  planned_minutes: number
+  focus_minutes: number
+  mood_score: number | null
+  energy_score: number | null
+}
