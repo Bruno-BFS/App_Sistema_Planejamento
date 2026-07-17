@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase'
-import type { FocusSession, Priority, Task, WorkspaceMembership } from '../types/domain'
+import type {
+  FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
+  Priority, Task, WorkspaceMembership,
+} from '../types/domain'
 
 function requireClient() {
   if (!supabase) throw new Error('Supabase não configurado.')
@@ -63,6 +66,7 @@ export async function createTask(input: {
   estimatedMinutes: number
   description?: string
   plannedDate?: string | null
+  goalId?: string | null
 }) {
   const client = requireClient()
   const { data, error } = await client
@@ -74,6 +78,7 @@ export async function createTask(input: {
       estimated_minutes: input.estimatedMinutes,
       description: input.description?.trim() || null,
       planned_date: input.plannedDate === undefined ? localDateString() : input.plannedDate,
+      goal_id: input.goalId || null,
       status: 'planned',
     })
     .select('*')
@@ -137,5 +142,105 @@ export async function startFocusSession(workspaceId: string, taskId: string) {
 export async function stopFocusSession(sessionId: string) {
   const client = requireClient()
   const { error } = await client.rpc('stop_focus_session', { p_session_id: sessionId })
+  if (error) throw error
+}
+
+export interface GoalInput {
+  workspaceId: string
+  title: string
+  description?: string
+  status: GoalStatus
+  startDate?: string | null
+  targetDate?: string | null
+  horizon: GoalHorizon
+  indicatorName?: string
+  targetValue?: number | null
+  currentValue: number
+  unit?: string
+  progress: number
+  progressMode: GoalProgressMode
+  priority: Priority
+  motivation?: string
+  expectedResult?: string
+  nextReviewDate?: string | null
+  notes?: string
+}
+
+function goalPayload(input: GoalInput) {
+  return {
+    workspace_id: input.workspaceId,
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    status: input.status,
+    start_date: input.startDate || null,
+    target_date: input.targetDate || null,
+    horizon: input.horizon,
+    indicator_name: input.indicatorName?.trim() || null,
+    target_value: input.progressMode === 'calculated' ? input.targetValue : null,
+    current_value: input.progressMode === 'calculated' ? input.currentValue : 0,
+    unit: input.unit?.trim() || null,
+    progress: input.progress,
+    progress_mode: input.progressMode,
+    priority: input.priority,
+    motivation: input.motivation?.trim() || null,
+    expected_result: input.expectedResult?.trim() || null,
+    next_review_date: input.nextReviewDate || null,
+    notes: input.notes?.trim() || null,
+  }
+}
+
+export async function listGoals(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('goals')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .neq('status', 'cancelled')
+    .order('target_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data as Goal[]
+}
+
+export async function listGoalMetrics(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client.rpc('get_goal_metrics', { p_workspace_id: workspaceId })
+  if (error) throw error
+  const rows = (data ?? []) as Array<GoalMetric & {
+    open_tasks: number | string
+    completed_tasks: number | string
+    projects_count: number | string
+  }>
+  return rows.map((metric) => ({
+    ...metric,
+    open_tasks: Number(metric.open_tasks),
+    completed_tasks: Number(metric.completed_tasks),
+    projects_count: Number(metric.projects_count),
+  })) as GoalMetric[]
+}
+
+export async function createGoal(input: GoalInput) {
+  const client = requireClient()
+  const { data, error } = await client.from('goals').insert(goalPayload(input)).select('*').single()
+  if (error) throw error
+  return data as Goal
+}
+
+export async function updateGoal(goalId: string, input: GoalInput) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('goals')
+    .update(goalPayload(input))
+    .eq('id', goalId)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Goal
+}
+
+export async function deleteGoal(goalId: string) {
+  const client = requireClient()
+  const { error } = await client.from('goals').delete().eq('id', goalId)
   if (error) throw error
 }

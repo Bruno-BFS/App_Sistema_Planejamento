@@ -16,7 +16,7 @@ export function AppLayout() {
         <nav className="nav-list" aria-label="Navegação principal">
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end to="/"><CalendarDays size={19} /> Hoje</NavLink>
           <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/tarefas"><CheckSquare2 size={19} /> Tarefas</NavLink>
-          <span className="nav-item disabled"><Target size={19} /> Objetivos <small>em breve</small></span>
+          <NavLink className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} to="/objetivos"><Target size={19} /> Objetivos</NavLink>
           <span className="nav-item disabled"><BarChart3 size={19} /> Análises <small>em breve</small></span>
         </nav>
 

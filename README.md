@@ -82,6 +82,9 @@ O GitHub Pages pode ser desativado em uma mudança separada depois de confirmar 
 - gestão de tarefas com descrição, data, busca, filtros e exclusão;
 - prioridades e estimativa de tempo;
 - cronômetro persistido no servidor;
+- gestão de objetivos com horizonte, prioridade, prazo e progresso manual ou calculado;
+- vínculo de tarefas a objetivos e indicadores de tarefas abertas/concluídas;
+- alertas de objetivos sem próximas tarefas, próximos do prazo ou em risco;
 - datas calculadas no fuso horário local do usuário;
 - isolamento multi-tenant por workspace e políticas RLS.
 
