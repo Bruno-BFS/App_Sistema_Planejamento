@@ -401,6 +401,13 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
   .main-content { min-height: calc(100svh - 68px); padding-bottom: 94px; }
   .today-page, .integrations-page, .calendar-page { width: min(100% - 36px, 760px); padding: 28px 0 42px; }
   .settings-page { width: min(100% - 36px, 760px); }
+  .today-dashboard-page { display: flex; flex-direction: column; }
+  .today-dashboard-page > .page-header { order: 0; }
+  .today-dashboard-page > .quick-task { order: 1; scroll-margin-top: 82px; }
+  .today-dashboard-page > .stats-grid { order: 2; }
+  .today-dashboard-page > .today-companion-card { order: 3; }
+  .today-dashboard-page > .focus-card { order: 4; }
+  .today-dashboard-page > .task-section { order: 5; }
   .page-header { margin-bottom: 24px; }
   .page-header h1 { font-size: clamp(29px, 7vw, 38px); }
   .mobile-bottom-nav { position: fixed; z-index: 40; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); left: 12px; min-height: 68px; padding: 7px 8px; display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid rgba(77,84,66,.17); border-radius: 21px; background: rgba(42,49,41,.94); box-shadow: 0 14px 42px rgba(33,39,32,.28), 0 1px 0 rgba(255,255,255,.1) inset; backdrop-filter: blur(18px); }

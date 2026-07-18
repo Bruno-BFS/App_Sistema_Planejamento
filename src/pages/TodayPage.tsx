@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Check, Clock3, Flame, Heart, Plus, Repeat2, Square, Timer, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -38,6 +38,8 @@ export function TodayPage() {
   const [minutes, setMinutes] = useState(30)
   const [now, setNow] = useState(Date.now())
   const [companionMessage, setCompanionMessage] = useState(0)
+  const taskFormRef = useRef<HTMLFormElement>(null)
+  const taskTitleRef = useRef<HTMLInputElement>(null)
 
   const workspaceQuery = useQuery({ queryKey: ['workspace'], queryFn: getDefaultWorkspace })
   const workspaceId = workspaceQuery.data?.workspace_id
@@ -97,6 +99,15 @@ export function TodayPage() {
     return () => window.clearInterval(interval)
   }, [focusQuery.data])
 
+  useEffect(() => {
+    if (!showForm) return
+    const frame = window.requestAnimationFrame(() => {
+      taskTitleRef.current?.focus({ preventScroll: true })
+      taskFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [showForm])
+
   const tasks = tasksQuery.data ?? []
   const completed = tasks.filter((task) => task.status === 'completed').length
   const totalMinutes = tasks.reduce((sum, task) => sum + task.estimated_minutes, 0)
@@ -126,10 +137,10 @@ export function TodayPage() {
   if (!workspaceId) return <div className="page-state error">Seu workspace ainda não foi criado. Confirme se a migration foi aplicada após o cadastro.</div>
 
   return (
-    <div className="today-page">
+    <div className="today-page today-dashboard-page">
       <header className="page-header">
         <div><span className="date-label"><CalendarDays size={16} /> {longDate}</span><h1>O que merece sua atenção hoje?</h1><p>Escolha poucas prioridades e avance com presença.</p></div>
-        <button className="primary-button compact" type="button" onClick={() => setShowForm(true)}><Plus size={18} /> Nova tarefa</button>
+        <button className="primary-button compact" type="button" onClick={() => setShowForm(true)} aria-controls="quick-task-form" aria-expanded={showForm}><Plus size={18} /> Nova tarefa</button>
       </header>
 
       <section className="stats-grid">
@@ -154,8 +165,8 @@ export function TodayPage() {
       )}
 
       {showForm && (
-        <form className="quick-task" onSubmit={submitTask}>
-          <input autoFocus required placeholder="O que precisa ser feito?" value={title} onChange={(event) => setTitle(event.target.value)} />
+        <form className="quick-task" id="quick-task-form" ref={taskFormRef} onSubmit={submitTask}>
+          <input ref={taskTitleRef} required placeholder="O que precisa ser feito?" value={title} onChange={(event) => setTitle(event.target.value)} />
           <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>
             {Object.entries(priorityLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
@@ -171,7 +182,7 @@ export function TodayPage() {
         {tasksQuery.isLoading && <div className="page-state">Carregando tarefas…</div>}
         {tasksQuery.error && <div className="page-state error">Não foi possível carregar as tarefas.</div>}
         {!tasksQuery.isLoading && tasks.length === 0 && (
-          <div className="empty-state"><span><Check size={28} /></span><h3>Seu dia está livre.</h3><p>Adicione a primeira tarefa e defina uma intenção clara.</p><button className="secondary-button" type="button" onClick={() => setShowForm(true)}><Plus size={17} /> Criar tarefa</button></div>
+          <div className="empty-state"><span><Check size={28} /></span><h3>Seu dia está livre.</h3><p>Adicione a primeira tarefa e defina uma intenção clara.</p><button className="secondary-button" type="button" onClick={() => setShowForm(true)} aria-controls="quick-task-form" aria-expanded={showForm}><Plus size={17} /> Criar tarefa</button></div>
         )}
 
         <div className="task-list">
