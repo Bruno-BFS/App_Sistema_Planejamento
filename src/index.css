@@ -27,6 +27,8 @@ h1, h2, h3, .brand { font-family: 'Manrope', sans-serif; }
 .sidebar { position: sticky; z-index: 20; top: 0; height: 100vh; background: #262a24; color: white; padding: 28px 20px 20px; display: flex; flex-direction: column; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.4px; padding: 0 8px; }
 .brand-mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--accent); color: #343a29; }
+.brand-mark.image-mark { overflow: hidden; padding: 0; background: transparent; }
+.brand-mark.image-mark img { width: 100%; height: 100%; display: block; border-radius: inherit; object-fit: cover; }
 .nav-list { display: grid; gap: 7px; margin-top: 48px; }
 .nav-item { min-height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 13px; border-radius: 11px; color: #bfc4ba; text-decoration: none; }
 .nav-item.active { color: white; background: rgba(255,255,255,.1); }
