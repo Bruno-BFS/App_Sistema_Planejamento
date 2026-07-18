@@ -17,6 +17,7 @@ const WeeklyReviewPage = lazy(() => import('./pages/WeeklyReviewPage').then((mod
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })))
 const NotificationSettingsPage = lazy(() => import('./pages/NotificationSettingsPage').then((module) => ({ default: module.NotificationSettingsPage })))
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage').then((module) => ({ default: module.IntegrationsPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })))
 const PrivacyPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.PrivacyPage })))
 const TermsPage = lazy(() => import('./pages/LegalPage').then((module) => ({ default: module.TermsPage })))
 
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/analises" element={<Suspense fallback={<div className="page-state">Calculando análises…</div>}><AnalyticsPage /></Suspense>} />
         <Route path="/notificacoes" element={<Suspense fallback={<div className="page-state">Carregando notificações…</div>}><NotificationSettingsPage /></Suspense>} />
         <Route path="/integracoes" element={<Suspense fallback={<div className="page-state">Preparando integrações…</div>}><IntegrationsPage /></Suspense>} />
+        <Route path="/configuracoes" element={<Suspense fallback={<div className="page-state">Carregando configurações…</div>}><SettingsPage /></Suspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

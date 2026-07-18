@@ -10,10 +10,11 @@ import {
   LogOut,
   Menu,
   PlugZap,
+  Settings2,
   Target,
   X,
 } from 'lucide-react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { NotificationCenter } from './NotificationCenter'
 
@@ -30,6 +31,7 @@ const insightNavigation = [
   { to: '/revisao-semanal', label: 'Revisão semanal', icon: CalendarRange },
   { to: '/analises', label: 'Análises', icon: BarChart3 },
   { to: '/integracoes', label: 'Integrações', icon: PlugZap },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings2 },
 ]
 
 function Avatar({ avatarInitial, avatarUrl, displayName }: { avatarInitial?: string; avatarUrl?: string; displayName: string }) {
@@ -100,10 +102,10 @@ export function AppLayout() {
         <NotificationCenter />
 
         <div className="sidebar-footer">
-          <div className="user-summary">
+          <Link className="user-summary user-summary-link" to="/configuracoes" aria-label="Abrir configurações da conta">
             <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
             <span><strong>{displayName}</strong><small>{user?.email}</small></span>
-          </div>
+          </Link>
           <button className="icon-button" type="button" onClick={() => void signOut()} aria-label="Sair">
             <LogOut size={18} />
           </button>
@@ -117,7 +119,9 @@ export function AppLayout() {
         </div>
         <div className="mobile-header-actions">
           <NotificationCenter />
-          <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
+          <Link className="profile-avatar-link" to="/configuracoes" aria-label="Abrir configurações da conta">
+            <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
+          </Link>
         </div>
       </header>
 
@@ -143,10 +147,10 @@ export function AppLayout() {
               {[mainNavigation[4], ...insightNavigation].map((item) => <NavigationLink item={item} key={item.to} />)}
             </nav>
             <footer>
-              <div className="user-summary">
+              <Link className="user-summary user-summary-link" to="/configuracoes" aria-label="Abrir configurações da conta">
                 <Avatar avatarInitial={avatarInitial} avatarUrl={avatarUrl} displayName={displayName} />
                 <span><strong>{displayName}</strong><small>{user?.email}</small></span>
-              </div>
+              </Link>
               <button className="secondary-button compact" type="button" onClick={() => void signOut()}><LogOut size={17} /> Sair</button>
             </footer>
           </aside>
