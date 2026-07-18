@@ -74,7 +74,7 @@ export function LoginPage() {
         <span className="login-orbit orbit-two" aria-hidden="true" />
 
         <header className="login-brand-row">
-          <div className="brand light"><span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-192.png`} alt="" /></span> Meu Ritmo</div>
+          <div className="brand light"><span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-mr-192.png`} alt="" /></span> Meu Ritmo</div>
           <span className="login-brand-note"><ShieldCheck size={14} /> Pessoal e privado</span>
         </header>
 

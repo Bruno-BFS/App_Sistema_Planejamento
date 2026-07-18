@@ -112,7 +112,7 @@ export function AppLayout() {
 
       <header className="mobile-header">
         <div className="brand">
-          <span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-192.png`} alt="" /></span>
+          <span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-mr-192.png`} alt="" /></span>
           <span>Meu Ritmo</span>
         </div>
         <div className="mobile-header-actions">

@@ -72,7 +72,7 @@ function LegalLayout({ title, subtitle, children }: { title: string; subtitle: s
   return (
     <main className="legal-page">
       <header className="legal-header">
-        <Link className="legal-brand" to="/login"><span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-192.png`} alt="" /></span><strong>Meu Ritmo</strong></Link>
+        <Link className="legal-brand" to="/login"><span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-mr-192.png`} alt="" /></span><strong>Meu Ritmo</strong></Link>
         <Link className="legal-back" to="/login"><ArrowLeft size={17} /> Voltar ao aplicativo</Link>
       </header>
       <article className="legal-document">
