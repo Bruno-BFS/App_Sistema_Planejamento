@@ -386,7 +386,11 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
   .mobile-more-sheet h2 { margin: 3px 0 0; font-size: 24px; }
   .mobile-more-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
   .mobile-more-list .nav-item { min-height: 58px; padding: 0 14px; color: #5e6459; border-color: #e1e0d7; background: #f3f2ec; }
+  .mobile-more-list .nav-item:not(.disabled):hover,
+  .mobile-more-list .nav-item:not(.disabled):focus-visible { color: #3d4534; border-color: #c8ceba; background: #ecefe5; transform: translateX(2px); }
   .mobile-more-list .nav-item.active { color: #3d4534; border-color: #bdc8a4; background: #e9efdc; box-shadow: 0 0 0 2px rgba(126,140,93,.1); }
+  .mobile-more-list .nav-item.active:hover,
+  .mobile-more-list .nav-item.active:focus-visible { color: #30372a; border-color: #aebc8d; background: #e2ead2; }
   .mobile-more-sheet > footer { margin-top: 16px; padding-top: 16px; display: flex; align-items: center; gap: 12px; border-top: 1px solid #e2e1d9; }
   .mobile-more-sheet > footer .secondary-button { flex: 0 0 auto; }
   .notification-panel { position: fixed; top: 74px; right: 14px; bottom: auto; left: auto; width: min(390px, calc(100vw - 28px)); }
