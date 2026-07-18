@@ -1,6 +1,6 @@
-const CACHE_NAME = 'meu-ritmo-shell-v1'
+const CACHE_NAME = 'meu-ritmo-shell-v2'
 const scopeUrl = new URL('./', self.registration.scope)
-const APP_SHELL = ['', 'manifest.webmanifest', 'app-icon.svg', 'app-icon-192.png', 'app-icon-512.png']
+const APP_SHELL = ['', 'manifest.webmanifest', 'app-icon-192.png', 'app-icon-512.png', 'brand/planner-mark-96.png']
   .map((asset) => new URL(asset, scopeUrl).toString())
 
 self.addEventListener('install', (event) => {

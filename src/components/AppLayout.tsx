@@ -10,7 +10,6 @@ import {
   LogOut,
   Menu,
   PlugZap,
-  Sparkles,
   Target,
   X,
 } from 'lucide-react'
@@ -83,7 +82,7 @@ export function AppLayout() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark"><Sparkles size={20} /></span>
+          <span className="brand-mark image-mark planner-brand-mark"><img src={`${import.meta.env.BASE_URL}brand/planner-mark-96.png`} alt="" /></span>
           <span>Meu Ritmo</span>
         </div>
 
@@ -113,7 +112,7 @@ export function AppLayout() {
 
       <header className="mobile-header">
         <div className="brand">
-          <span className="brand-mark"><Sparkles size={18} /></span>
+          <span className="brand-mark image-mark primary-brand-mark"><img src={`${import.meta.env.BASE_URL}app-icon-192.png`} alt="" /></span>
           <span>Meu Ritmo</span>
         </div>
         <div className="mobile-header-actions">
