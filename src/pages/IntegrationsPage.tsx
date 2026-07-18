@@ -112,7 +112,7 @@ export function IntegrationsPage() {
         <span className={`connection-badge ${installPrompt.installed ? 'connected' : 'pending'}`}>{installPrompt.installed ? 'Instalado' : 'Disponível como PWA'}</span>
       </div>
       <div className="pwa-content">
-        <img src={`${import.meta.env.BASE_URL}app-icon-512.png`} alt="Ícone oficial do Meu Ritmo" />
+        <img src={`${import.meta.env.BASE_URL}app-icon-mr-512.png`} alt="Ícone oficial do Meu Ritmo" />
         <div><strong>Ícone oficial do Meu Ritmo</strong><p>O monograma MR identifica o aplicativo na tela inicial e mantém a mesma linguagem visual da experiência interna.</p><span><LockKeyhole size={14} /> O modo offline protege apenas a abertura do app; dados continuam vindo com segurança do Supabase.</span></div>
         {!installPrompt.installed && <button className="primary-button compact" type="button" onClick={() => void installPrompt.install()} disabled={!installPrompt.canInstall}><Download size={17} /> {installPrompt.canInstall ? 'Instalar aplicativo' : 'Use o menu do navegador para instalar'}</button>}
       </div>
