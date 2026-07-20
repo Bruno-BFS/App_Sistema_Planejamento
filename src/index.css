@@ -284,7 +284,8 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
 .sidebar { width: 276px; padding: 26px 20px 20px; }
 .brand { min-height: 46px; gap: 12px; font-size: 19px; }
 .brand-mark { width: 40px; height: 40px; border-radius: 13px; }
-.desktop-navigation { min-height: 0; margin-top: 34px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.16) transparent; }
+.desktop-navigation { width: 100%; min-width: 0; min-height: 0; margin-top: 34px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.16) transparent; }
+.desktop-navigation .nav-group, .desktop-navigation .nav-list, .desktop-navigation .nav-item { min-width: 0; max-width: 100%; }
 .nav-group + .nav-group { margin-top: 25px; }
 .nav-group-label { display: block; padding: 0 13px 8px; color: #8f978c; font-size: 10px; font-weight: 800; letter-spacing: 1.35px; text-transform: uppercase; }
 .nav-list { margin-top: 0; gap: 5px; }
