@@ -141,7 +141,7 @@ export async function createTask(input: {
 }
 
 export async function updateTask(taskId: string, values: Partial<Pick<Task,
-  'title' | 'description' | 'priority' | 'planned_date' | 'estimated_minutes' | 'status' | 'completed_at'
+  'title' | 'description' | 'priority' | 'planned_date' | 'estimated_minutes' | 'status' | 'completed_at' | 'goal_id' | 'project_id'
 >>) {
   const client = requireClient()
   const { error } = await client.from('tasks').update(values).eq('id', taskId)

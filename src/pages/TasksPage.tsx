@@ -1,8 +1,8 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, Clock3, FolderKanban, Inbox, Plus, Repeat2, Search, Target, Trash2, X } from 'lucide-react'
+import { CalendarDays, Check, Clock3, FolderKanban, Inbox, Pencil, Plus, Repeat2, Search, Target, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { createTask, deleteTask, getDefaultWorkspace, listGoals, listProjects, listTasks, setTaskCompleted } from '../services/planning'
+import { createTask, deleteTask, getDefaultWorkspace, listGoals, listProjects, listTasks, setTaskCompleted, updateTask } from '../services/planning'
 import type { Priority, Task } from '../types/domain'
 
 type StatusFilter = 'all' | 'open' | 'completed'
@@ -27,6 +27,7 @@ function formatDate(value: string | null) {
 export function TasksPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [title, setTitle] = useState('')
@@ -36,6 +37,8 @@ export function TasksPage() {
   const [plannedDate, setPlannedDate] = useState(localDate())
   const [goalId, setGoalId] = useState('')
   const [projectId, setProjectId] = useState('')
+  const formRef = useRef<HTMLFormElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
 
   const workspaceQuery = useQuery({ queryKey: ['workspace'], queryFn: getDefaultWorkspace })
   const workspaceId = workspaceQuery.data?.workspace_id
@@ -63,20 +66,23 @@ export function TasksPage() {
     ])
   }
 
-  const createMutation = useMutation({
-    mutationFn: () => createTask({
-      workspaceId: workspaceId!, title, description, priority,
-      estimatedMinutes: minutes, plannedDate: plannedDate || null, goalId: goalId || null, projectId: projectId || null,
-    }),
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (editingTask) {
+        await updateTask(editingTask.id, {
+          title: title.trim(), description: description.trim() || null, priority,
+          estimated_minutes: minutes, planned_date: plannedDate || null,
+          goal_id: goalId || null, project_id: projectId || null,
+        })
+        return
+      }
+      await createTask({
+        workspaceId: workspaceId!, title, description, priority,
+        estimatedMinutes: minutes, plannedDate: plannedDate || null, goalId: goalId || null, projectId: projectId || null,
+      })
+    },
     onSuccess: async () => {
-      setTitle('')
-      setDescription('')
-      setPriority('medium')
-      setMinutes(30)
-      setPlannedDate(localDate())
-      setGoalId('')
-      setProjectId('')
-      setShowForm(false)
+      closeForm()
       await refresh()
     },
   })
@@ -106,6 +112,46 @@ export function TasksPage() {
   const goalMap = useMemo(() => new Map((goalsQuery.data ?? []).map((goal) => [goal.id, goal.title])), [goalsQuery.data])
   const projectMap = useMemo(() => new Map((projectsQuery.data ?? []).map((project) => [project.id, project.title])), [projectsQuery.data])
 
+  useEffect(() => {
+    if (!showForm) return
+    formRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    titleInputRef.current?.focus({ preventScroll: true })
+  }, [showForm, editingTask])
+
+  function resetFields() {
+    setTitle('')
+    setDescription('')
+    setPriority('medium')
+    setMinutes(30)
+    setPlannedDate(localDate())
+    setGoalId('')
+    setProjectId('')
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditingTask(null)
+    resetFields()
+  }
+
+  function openCreateForm() {
+    setEditingTask(null)
+    resetFields()
+    setShowForm(true)
+  }
+
+  function openEditForm(task: Task) {
+    setEditingTask(task)
+    setTitle(task.title)
+    setDescription(task.description ?? '')
+    setPriority(task.priority)
+    setMinutes(task.estimated_minutes)
+    setPlannedDate(task.planned_date ?? '')
+    setGoalId(task.goal_id ?? '')
+    setProjectId(task.project_id ?? '')
+    setShowForm(true)
+  }
+
   function chooseProject(value: string) {
     setProjectId(value)
     const project = (projectsQuery.data ?? []).find((item) => item.id === value)
@@ -114,7 +160,7 @@ export function TasksPage() {
 
   function submitTask(event: FormEvent) {
     event.preventDefault()
-    if (title.trim()) createMutation.mutate()
+    if (title.trim()) saveMutation.mutate()
   }
 
   function confirmDelete(task: Task) {
@@ -130,7 +176,7 @@ export function TasksPage() {
     <div className="today-page tasks-page">
       <header className="page-header">
         <div><span className="eyebrow">Organização</span><h1>Suas tarefas</h1><p>Capture, priorize e acompanhe tudo que precisa avançar.</p></div>
-        <div className="page-header-actions"><Link className="secondary-button compact" to="/rotinas"><Repeat2 size={17} /> Rotinas</Link><button className="primary-button compact" type="button" onClick={() => setShowForm(true)}><Plus size={18} /> Nova tarefa</button></div>
+        <div className="page-header-actions"><Link className="secondary-button compact" to="/rotinas"><Repeat2 size={17} /> Rotinas</Link><button className="primary-button compact" type="button" onClick={openCreateForm}><Plus size={18} /> Nova tarefa</button></div>
       </header>
 
       <section className="stats-grid compact-stats">
@@ -140,19 +186,20 @@ export function TasksPage() {
       </section>
 
       {showForm && (
-        <form className="task-form-card" onSubmit={submitTask}>
-          <div className="form-card-heading"><div><span className="eyebrow">Nova tarefa</span><h2>O que precisa avançar?</h2></div><button className="icon-button light" type="button" onClick={() => setShowForm(false)} aria-label="Fechar formulário"><X size={20} /></button></div>
-          <label className="wide-field">Título<input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Preparar apresentação" /></label>
+        <form className="task-form-card" onSubmit={submitTask} ref={formRef}>
+          <div className="form-card-heading"><div><span className="eyebrow">{editingTask ? 'Editar tarefa' : 'Nova tarefa'}</span><h2>{editingTask ? 'Atualize os detalhes da tarefa' : 'O que precisa avançar?'}</h2></div><button className="icon-button light" type="button" onClick={closeForm} aria-label="Fechar formulário"><X size={20} /></button></div>
+          {editingTask?.recurrence_id && <p className="task-form-note"><Repeat2 size={16} /> Esta edição altera somente esta ocorrência. Para mudar as próximas, edite a rotina.</p>}
+          <label className="wide-field">Título<input autoFocus ref={titleInputRef} required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Preparar apresentação" /></label>
           <label className="wide-field">Descrição<textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Contexto ou próximo passo (opcional)" rows={3} /></label>
           <div className="form-grid">
             <label>Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label>Data planejada<input type="date" value={plannedDate} onChange={(event) => setPlannedDate(event.target.value)} /></label>
             <label>Estimativa (min)<input min="5" step="5" type="number" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label>
-            <label>Objetivo<select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sem objetivo</option>{(goalsQuery.data ?? []).filter((goal) => goal.status !== 'completed').map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
-            <label>Projeto<select value={projectId} onChange={(event) => chooseProject(event.target.value)}><option value="">Sem projeto</option>{(projectsQuery.data ?? []).filter((project) => project.status !== 'completed').map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
+            <label>Objetivo<select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sem objetivo</option>{(goalsQuery.data ?? []).filter((goal) => goal.status !== 'completed' || goal.id === goalId).map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
+            <label>Projeto<select value={projectId} onChange={(event) => chooseProject(event.target.value)}><option value="">Sem projeto</option>{(projectsQuery.data ?? []).filter((project) => project.status !== 'completed' || project.id === projectId).map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
           </div>
-          {createMutation.error && <p className="form-error">Não foi possível criar a tarefa.</p>}
-          <div className="form-actions"><button className="text-button" type="button" onClick={() => setShowForm(false)}>Cancelar</button><button className="primary-button compact" disabled={createMutation.isPending} type="submit">{createMutation.isPending ? 'Salvando…' : 'Adicionar tarefa'}</button></div>
+          {saveMutation.error && <p className="form-error">Não foi possível {editingTask ? 'atualizar' : 'criar'} a tarefa.</p>}
+          <div className="form-actions"><button className="text-button" type="button" onClick={closeForm}>Cancelar</button><button className="primary-button compact" disabled={saveMutation.isPending} type="submit">{saveMutation.isPending ? 'Salvando…' : editingTask ? 'Salvar alterações' : 'Adicionar tarefa'}</button></div>
         </form>
       )}
 
@@ -179,7 +226,10 @@ export function TasksPage() {
               <article className={`task-row detailed ${done ? 'done' : ''}`} key={task.id}>
                 <button className="check-button" type="button" onClick={() => completeMutation.mutate({ task, completed: !done })} aria-label={done ? 'Reabrir tarefa' : 'Concluir tarefa'}>{done && <Check size={16} />}</button>
                 <div className="task-copy"><strong>{task.title}</strong>{task.description && <p>{task.description}</p>}<span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em>{task.recurrence_id && <small className="recurring-task-label"><Repeat2 size={14} /> Recorrente</small>}<small><CalendarDays size={14} /> {formatDate(task.planned_date)}</small><small><Clock3 size={14} /> {task.estimated_minutes} min</small>{task.project_id && projectMap.get(task.project_id) && <small><FolderKanban size={14} /> {projectMap.get(task.project_id)}</small>}{task.goal_id && goalMap.get(task.goal_id) && <small><Target size={14} /> {goalMap.get(task.goal_id)}</small>}</span></div>
-                <button className="icon-button danger" type="button" onClick={() => confirmDelete(task)} aria-label={`Excluir ${task.title}`} disabled={deleteMutation.isPending}><Trash2 size={18} /></button>
+                <div className="task-row-actions">
+                  <button className="icon-button light" type="button" onClick={() => openEditForm(task)} aria-label={`Editar ${task.title}`}><Pencil size={18} /></button>
+                  <button className="icon-button danger" type="button" onClick={() => confirmDelete(task)} aria-label={`Excluir ${task.title}`} disabled={deleteMutation.isPending}><Trash2 size={18} /></button>
+                </div>
               </article>
             )
           })}
