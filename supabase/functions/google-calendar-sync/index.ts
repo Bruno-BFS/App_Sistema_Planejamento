@@ -14,6 +14,7 @@ interface CalendarTask {
   status: string
   priority: string
   planned_date: string | null
+  planned_start_time: string | null
   estimated_minutes: number
 }
 
@@ -41,7 +42,7 @@ function nextDate(value: string) {
   return date.toISOString().slice(0, 10)
 }
 
-function eventPayload(task: CalendarTask) {
+function eventPayload(task: CalendarTask, timeZone: string) {
   const completed = task.status === 'completed'
   const details = [
     task.description,
@@ -50,13 +51,25 @@ function eventPayload(task: CalendarTask) {
     'Sincronizado pelo Meu Ritmo.',
   ].filter(Boolean).join('\n\n')
 
-  return {
+  const base = {
     summary: `${completed ? '✓ ' : ''}${task.title}`,
     description: details,
-    start: { date: task.planned_date },
-    end: { date: nextDate(task.planned_date!) },
     transparency: completed ? 'transparent' : 'opaque',
     extendedProperties: { private: { meuRitmoTaskId: task.id } },
+  }
+  if (!task.planned_start_time) {
+    return { ...base, start: { date: task.planned_date }, end: { date: nextDate(task.planned_date!) } }
+  }
+
+  const [hours, minutes] = task.planned_start_time.slice(0, 5).split(':').map(Number)
+  const endTotal = hours * 60 + minutes + task.estimated_minutes
+  const endDate = new Date(`${task.planned_date}T12:00:00Z`)
+  endDate.setUTCDate(endDate.getUTCDate() + Math.floor(endTotal / 1440))
+  const endTime = `${String(Math.floor(endTotal / 60) % 24).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}:00`
+  return {
+    ...base,
+    start: { dateTime: `${task.planned_date}T${task.planned_start_time.slice(0, 5)}:00`, timeZone },
+    end: { dateTime: `${endDate.toISOString().slice(0, 10)}T${endTime}`, timeZone },
   }
 }
 
@@ -126,6 +139,8 @@ Deno.serve(async (request) => {
     })
     const { data: userData, error: userError } = await userClient.auth.getUser()
     if (userError || !userData.user) return response({ error: 'Sessão inválida.' }, 401)
+    const { data: profile } = await userClient.from('profiles').select('timezone').eq('id', userData.user.id).maybeSingle()
+    const userTimeZone = typeof profile?.timezone === 'string' && profile.timezone ? profile.timezone : 'America/Sao_Paulo'
 
     const body = await request.json().catch(() => null) as { googleAccessToken?: string; taskIds?: string[] } | null
     if (!body) return response({ error: 'Corpo da requisição inválido.' }, 400)
@@ -137,7 +152,7 @@ Deno.serve(async (request) => {
 
     const { data: taskRows, error: taskError } = await userClient
       .from('tasks')
-      .select('id, workspace_id, title, description, status, priority, planned_date, estimated_minutes')
+      .select('id, workspace_id, title, description, status, priority, planned_date, planned_start_time, estimated_minutes')
       .in('id', taskIds)
       .neq('status', 'cancelled')
     if (taskError) throw taskError
@@ -160,10 +175,10 @@ Deno.serve(async (request) => {
       const calendarId = existing?.calendar_id ?? 'primary'
       const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
       let result = existing
-        ? await googleRequest(body.googleAccessToken, `${baseUrl}/${encodeURIComponent(existing.google_event_id)}`, 'PUT', eventPayload(task))
-        : await googleRequest(body.googleAccessToken, baseUrl, 'POST', eventPayload(task))
+        ? await googleRequest(body.googleAccessToken, `${baseUrl}/${encodeURIComponent(existing.google_event_id)}`, 'PUT', eventPayload(task, userTimeZone))
+        : await googleRequest(body.googleAccessToken, baseUrl, 'POST', eventPayload(task, userTimeZone))
 
-      if (result.kind === 'missing') result = await googleRequest(body.googleAccessToken, baseUrl, 'POST', eventPayload(task))
+      if (result.kind === 'missing') result = await googleRequest(body.googleAccessToken, baseUrl, 'POST', eventPayload(task, userTimeZone))
       if (result.kind === 'reauth') return response({ error: 'A permissão do Google expirou ou não inclui o Calendar.', code: 'reauth_required' }, 401)
       if (result.kind === 'failed') {
         failed.push({ taskId: task.id, code: result.status === 429 ? 'rate_limited' : 'google_error' })

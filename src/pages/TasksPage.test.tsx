@@ -8,6 +8,7 @@ import { TasksPage } from './TasksPage'
 
 const planningMocks = vi.hoisted(() => ({
   createTask: vi.fn(),
+  createTaskRecurrence: vi.fn(),
   deleteTask: vi.fn(),
   getDefaultWorkspace: vi.fn(),
   listGoals: vi.fn(),
@@ -27,6 +28,7 @@ const task: Task = {
   status: 'planned',
   priority: 'high',
   planned_date: '2026-07-20',
+  planned_start_time: '09:00:00',
   estimated_minutes: 45,
   actual_minutes: 0,
   project_id: null,
@@ -56,6 +58,7 @@ describe('TasksPage', () => {
     planningMocks.listGoals.mockResolvedValue([])
     planningMocks.listProjects.mockResolvedValue([])
     planningMocks.updateTask.mockResolvedValue(undefined)
+    planningMocks.createTaskRecurrence.mockResolvedValue(undefined)
   })
 
   it('abre a tarefa preenchida e salva as alterações', async () => {
@@ -70,6 +73,7 @@ describe('TasksPage', () => {
     expect(screen.getByLabelText('Descrição')).toHaveValue('Descrição original')
     expect(screen.getByLabelText('Prioridade')).toHaveValue('high')
     expect(screen.getByLabelText('Estimativa (min)')).toHaveValue(45)
+    expect(screen.getByLabelText('Horário de início')).toHaveValue('09:00')
 
     await user.clear(titleInput)
     await user.type(titleInput, 'Tarefa atualizada')
@@ -81,8 +85,31 @@ describe('TasksPage', () => {
       priority: 'high',
       estimated_minutes: 45,
       planned_date: '2026-07-20',
+      planned_start_time: '09:00',
       goal_id: null,
       project_id: null,
     })))
+  })
+
+  it('cria uma recorrência semanal com horário e dias escolhidos', async () => {
+    const user = userEvent.setup()
+    planningMocks.listTasks.mockResolvedValue([])
+    renderTasksPage()
+
+    await screen.findByText('Nenhuma tarefa encontrada.')
+    await user.click(screen.getByRole('button', { name: 'Nova tarefa' }))
+    await user.type(screen.getByLabelText('Título'), 'Treinar inglês')
+    await user.click(screen.getByRole('button', { name: 'Semanal' }))
+    await user.type(screen.getByLabelText('Horário de início'), '18:30')
+    await user.click(screen.getByRole('button', { name: 'Adicionar tarefa' }))
+
+    await waitFor(() => expect(planningMocks.createTaskRecurrence).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Treinar inglês',
+      frequency: 'weekly',
+      intervalCount: 1,
+      plannedStartTime: '18:30',
+      weekdays: expect.arrayContaining([new Date().getDay()]),
+    })))
+    expect(planningMocks.createTask).not.toHaveBeenCalled()
   })
 })

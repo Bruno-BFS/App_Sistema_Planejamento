@@ -116,10 +116,12 @@ export async function createTask(input: {
   estimatedMinutes: number
   description?: string
   plannedDate?: string | null
+  plannedStartTime?: string | null
   goalId?: string | null
   projectId?: string | null
 }) {
   const client = requireClient()
+  const plannedDate = input.plannedDate === undefined ? localDateString() : input.plannedDate
   const { data, error } = await client
     .from('tasks')
     .insert({
@@ -128,7 +130,8 @@ export async function createTask(input: {
       priority: input.priority,
       estimated_minutes: input.estimatedMinutes,
       description: input.description?.trim() || null,
-      planned_date: input.plannedDate === undefined ? localDateString() : input.plannedDate,
+      planned_date: plannedDate,
+      planned_start_time: plannedDate ? input.plannedStartTime || null : null,
       goal_id: input.goalId || null,
       project_id: input.projectId || null,
       status: 'planned',
@@ -141,7 +144,7 @@ export async function createTask(input: {
 }
 
 export async function updateTask(taskId: string, values: Partial<Pick<Task,
-  'title' | 'description' | 'priority' | 'planned_date' | 'estimated_minutes' | 'status' | 'completed_at' | 'goal_id' | 'project_id'
+  'title' | 'description' | 'priority' | 'planned_date' | 'planned_start_time' | 'estimated_minutes' | 'status' | 'completed_at' | 'goal_id' | 'project_id'
 >>) {
   const client = requireClient()
   const { error } = await client.from('tasks').update(values).eq('id', taskId)
@@ -164,8 +167,19 @@ export interface TaskRecurrenceInput {
   intervalCount: number
   startDate: string
   endDate?: string | null
+  plannedStartTime?: string | null
+  weekdays?: number[]
   goalId?: string | null
   projectId?: string | null
+}
+
+function firstWeeklyOccurrence(startDate: string, weekdays: number[]) {
+  const date = new Date(`${startDate}T12:00:00Z`)
+  for (let offset = 0; offset < 7; offset += 1) {
+    if (weekdays.includes(date.getUTCDay())) return date.toISOString().slice(0, 10)
+    date.setUTCDate(date.getUTCDate() + 1)
+  }
+  return startDate
 }
 
 export async function listTaskRecurrences(workspaceId: string) {
@@ -182,6 +196,10 @@ export async function listTaskRecurrences(workspaceId: string) {
 
 export async function createTaskRecurrence(input: TaskRecurrenceInput) {
   const client = requireClient()
+  const weekdays = input.frequency === 'weekly' ? [...new Set(input.weekdays ?? [])].sort() : []
+  const nextOccurrence = input.frequency === 'weekly'
+    ? firstWeeklyOccurrence(input.startDate, weekdays)
+    : input.startDate
   const { data, error } = await client
     .from('task_recurrences')
     .insert({
@@ -194,7 +212,9 @@ export async function createTaskRecurrence(input: TaskRecurrenceInput) {
       interval_count: input.intervalCount,
       start_date: input.startDate,
       end_date: input.endDate || null,
-      next_occurrence: input.startDate,
+      planned_start_time: input.plannedStartTime || null,
+      weekdays,
+      next_occurrence: nextOccurrence,
       goal_id: input.goalId || null,
       project_id: input.projectId || null,
     })

@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Inbox, Plus, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Inbox, Plus, RotateCcw, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
   createTask, getDefaultWorkspace, listCalendarTasks, listUnscheduledTasks, setTaskCompleted, updateTask,
 } from '../services/planning'
 import type { Priority, Task } from '../types/domain'
+import { calculateOccupiedMinutes, DEFAULT_DAY_END_MINUTES, DEFAULT_DAY_START_MINUTES, formatMinutes, hasScheduleConflict, taskTimeRange } from '../lib/schedule'
 
 const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const priorityLabel: Record<Priority, string> = {
@@ -50,6 +51,7 @@ export function CalendarPage() {
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
   const [minutes, setMinutes] = useState(30)
+  const [plannedStartTime, setPlannedStartTime] = useState('')
 
   const days = useMemo(() => buildMonthDays(viewMonth), [viewMonth])
   const startDate = dateKey(days[0])
@@ -82,11 +84,13 @@ export function CalendarPage() {
   const createMutation = useMutation({
     mutationFn: () => createTask({
       workspaceId: workspaceId!, title, priority, estimatedMinutes: minutes, plannedDate: selectedDate,
+      plannedStartTime: plannedStartTime || null,
     }),
     onSuccess: async () => {
       setTitle('')
       setPriority('medium')
       setMinutes(30)
+      setPlannedStartTime('')
       setShowForm(false)
       await refresh()
     },
@@ -113,6 +117,7 @@ export function CalendarPage() {
     return grouped
   }, [visibleTasks])
   const selectedTasks = (tasksByDay.get(selectedDate) ?? []).slice().sort((a, b) => {
+    if (a.planned_start_time !== b.planned_start_time) return (a.planned_start_time ?? '99:99').localeCompare(b.planned_start_time ?? '99:99')
     if ((a.status === 'completed') !== (b.status === 'completed')) return a.status === 'completed' ? 1 : -1
     return b.priority.localeCompare(a.priority)
   })
@@ -122,6 +127,14 @@ export function CalendarPage() {
     .filter((task) => task.status !== 'completed')
     .reduce((total, task) => total + task.estimated_minutes, 0)
   const overdue = tasks.filter((task) => task.planned_date && task.planned_date < today && task.status !== 'completed').length
+  const scheduledTasks = selectedTasks.filter((task) => task.planned_start_time)
+  const flexibleTasks = selectedTasks.filter((task) => !task.planned_start_time)
+  const occupiedMinutes = calculateOccupiedMinutes(scheduledTasks)
+  const availableMinutes = DEFAULT_DAY_END_MINUTES - DEFAULT_DAY_START_MINUTES
+  const freeMinutes = Math.max(0, availableMinutes - occupiedMinutes)
+  const occupancyPercent = Math.min(100, Math.round((occupiedMinutes / availableMinutes) * 100))
+  const hasConflicts = scheduledTasks.some((task) => hasScheduleConflict(task, scheduledTasks))
+  const timelineHours = Array.from({ length: 16 }, (_, index) => index + 7)
 
   function changeMonth(offset: number) {
     const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + offset, 1)
@@ -161,6 +174,34 @@ export function CalendarPage() {
         <article><span className="stat-icon amber"><Check size={19} /></span><div><strong>{completedMonth}</strong><small>concluídas</small></div></article>
         <article><span className="stat-icon coral"><Clock3 size={19} /></span><div><strong>{Math.floor(openMinutes / 60)}h {openMinutes % 60}min</strong><small>carga em aberto</small></div></article>
         <article className={overdue ? 'attention' : ''}><span className="stat-icon"><RotateCcw size={19} /></span><div><strong>{overdue}</strong><small>tarefas vencidas</small></div></article>
+      </section>
+
+      <section className="day-planner" aria-label={`Planejamento de ${formatSelectedDate(selectedDate)}`}>
+        <div className="day-planner-heading">
+          <div><span className="eyebrow">Mapa do dia</span><h2>{formatSelectedDate(selectedDate)}</h2><p>Janela ativa considerada: 07:00–22:00.</p></div>
+          <div className="day-capacity-numbers"><span><strong>{formatMinutes(occupiedMinutes)}</strong><small>ocupado</small></span><span><strong>{formatMinutes(freeMinutes)}</strong><small>livre</small></span><span><strong>{occupancyPercent}%</strong><small>da capacidade</small></span></div>
+        </div>
+        <div className="capacity-track" aria-label={`${occupancyPercent}% do dia ocupado`}><span style={{ width: `${occupancyPercent}%` }} /></div>
+        {hasConflicts && <div className="schedule-warning"><AlertTriangle size={17} /><span>Há tarefas sobrepostas. Ajuste os horários para evitar conflito.</span></div>}
+        <div className="day-planner-grid">
+          <div className="day-timeline" style={{ height: `${(timelineHours.length - 1) * 58}px` }}>
+            {timelineHours.map((hour) => <div className="timeline-hour" key={hour} style={{ top: `${(hour - 7) * 58}px` }}><time>{String(hour).padStart(2, '0')}:00</time><span /></div>)}
+            {scheduledTasks.map((task, index) => {
+              const range = taskTimeRange(task)!
+              const clippedStart = Math.max(DEFAULT_DAY_START_MINUTES, range.start)
+              const clippedEnd = Math.min(DEFAULT_DAY_END_MINUTES, range.end)
+              if (clippedEnd <= clippedStart) return null
+              const conflict = hasScheduleConflict(task, scheduledTasks)
+              return <article className={`timeline-task ${task.priority} ${task.status === 'completed' ? 'done' : ''} ${conflict ? 'conflict' : ''}`} key={task.id} style={{ top: `${((clippedStart - DEFAULT_DAY_START_MINUTES) / 60) * 58}px`, height: `${Math.max(34, ((clippedEnd - clippedStart) / 60) * 58)}px`, left: conflict ? `${56 + (index % 2) * 8}px` : '56px' }}><strong>{task.title}</strong><small>{task.planned_start_time!.slice(0, 5)} · {formatMinutes(task.estimated_minutes)}</small></article>
+            })}
+            {!scheduledTasks.length && <div className="timeline-empty"><Clock3 size={22} /><strong>Nenhum horário reservado</strong><span>Defina o início das tarefas para visualizar a ocupação do dia.</span></div>}
+          </div>
+          <aside className="day-breakdown">
+            <div><span className="eyebrow">Segmentação</span><strong>{selectedTasks.length} tarefas</strong></div>
+            <div className="task-segment-list">{scheduledTasks.map((task) => <article key={task.id}><span className={`segment-dot ${task.priority}`} /><div><strong>{task.title}</strong><small>{task.planned_start_time!.slice(0, 5)} · {formatMinutes(task.estimated_minutes)}</small></div></article>)}</div>
+            {flexibleTasks.length > 0 && <div className="flexible-task-note"><Inbox size={17} /><span><strong>{flexibleTasks.length} sem horário</strong><small>Estão no dia, mas ainda não ocupam um bloco.</small></span></div>}
+          </aside>
+        </div>
       </section>
 
       <section className="calendar-shell">
@@ -206,7 +247,7 @@ export function CalendarPage() {
           {showForm && (
             <form className="calendar-quick-form" onSubmit={submitTask}>
               <label>Tarefa<input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="O que precisa avançar?" /></label>
-              <div><label>Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Minutos<input type="number" min="5" step="5" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label></div>
+              <div><label>Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Horário<input type="time" value={plannedStartTime} onChange={(event) => setPlannedStartTime(event.target.value)} /></label><label>Minutos<input type="number" min="5" step="5" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label></div>
               {createMutation.error && <p className="form-error">Não foi possível criar a tarefa.</p>}
               <button className="primary-button compact" disabled={createMutation.isPending} type="submit">{createMutation.isPending ? 'Salvando…' : 'Adicionar ao dia'}</button>
             </form>
@@ -216,7 +257,7 @@ export function CalendarPage() {
             {!selectedTasks.length && <div className="calendar-empty"><Check size={23} /><strong>Dia disponível</strong><span>Adicione uma tarefa ou traga um item da fila.</span></div>}
             {selectedTasks.map((task) => {
               const done = task.status === 'completed'
-              return <article className={done ? 'done' : ''} key={task.id}><button className="check-button" type="button" onClick={() => completeMutation.mutate({ task, completed: !done })} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`}>{done && <Check size={14} />}</button><div><strong>{task.title}</strong><span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em><small><Clock3 size={12} /> {task.estimated_minutes} min</small></span></div></article>
+              return <article className={done ? 'done' : ''} key={task.id}><button className="check-button" type="button" onClick={() => completeMutation.mutate({ task, completed: !done })} aria-label={done ? `Reabrir ${task.title}` : `Concluir ${task.title}`}>{done && <Check size={14} />}</button><div><strong>{task.title}</strong><span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em>{task.planned_start_time && <small><Clock3 size={12} /> {task.planned_start_time.slice(0, 5)}</small>}<small>{task.estimated_minutes} min</small></span></div></article>
             })}
           </div>
 
