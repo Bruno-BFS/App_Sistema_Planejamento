@@ -3,15 +3,19 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Inbox, Plus, RotateCcw, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
-  createTask, getDefaultWorkspace, listCalendarTasks, listUnscheduledTasks, setTaskCompleted, updateTask,
+  createTask, createTaskRecurrence, getDefaultWorkspace, listCalendarTasks, listUnscheduledTasks, setTaskCompleted, updateTask,
 } from '../services/planning'
-import type { Priority, Task } from '../types/domain'
+import type { Priority, RecurrenceFrequency, Task } from '../types/domain'
 import { calculateOccupiedMinutes, DEFAULT_DAY_END_MINUTES, DEFAULT_DAY_START_MINUTES, formatMinutes, hasScheduleConflict, taskTimeRange } from '../lib/schedule'
 
 const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const priorityLabel: Record<Priority, string> = {
   low: 'Baixa', medium: 'Média', high: 'Alta', critical: 'Crítica',
 }
+const recurrenceWeekdays = [
+  { value: 1, label: 'S' }, { value: 2, label: 'T' }, { value: 3, label: 'Q' },
+  { value: 4, label: 'Q' }, { value: 5, label: 'S' }, { value: 6, label: 'S' }, { value: 0, label: 'D' },
+]
 
 function dateKey(date: Date) {
   const year = date.getFullYear()
@@ -52,6 +56,10 @@ export function CalendarPage() {
   const [priority, setPriority] = useState<Priority>('medium')
   const [minutes, setMinutes] = useState(30)
   const [plannedStartTime, setPlannedStartTime] = useState('')
+  const [repeat, setRepeat] = useState<'none' | RecurrenceFrequency>('none')
+  const [intervalCount, setIntervalCount] = useState(1)
+  const [repeatEndDate, setRepeatEndDate] = useState('')
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([new Date().getDay()])
 
   const days = useMemo(() => buildMonthDays(viewMonth), [viewMonth])
   const startDate = dateKey(days[0])
@@ -78,19 +86,27 @@ export function CalendarPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId] }),
       queryClient.invalidateQueries({ queryKey: ['today-tasks', workspaceId] }),
       queryClient.invalidateQueries({ queryKey: ['personal-reminders', workspaceId] }),
+      queryClient.invalidateQueries({ queryKey: ['task-recurrences', workspaceId] }),
     ])
   }
 
   const createMutation = useMutation({
-    mutationFn: () => createTask({
-      workspaceId: workspaceId!, title, priority, estimatedMinutes: minutes, plannedDate: selectedDate,
-      plannedStartTime: plannedStartTime || null,
-    }),
+    mutationFn: async () => {
+      if (repeat === 'none') {
+        await createTask({
+          workspaceId: workspaceId!, title: title.trim(), priority, estimatedMinutes: minutes, plannedDate: selectedDate,
+          plannedStartTime: plannedStartTime || null,
+        })
+        return
+      }
+      await createTaskRecurrence({
+        workspaceId: workspaceId!, title: title.trim(), priority, estimatedMinutes: minutes,
+        frequency: repeat, intervalCount, startDate: selectedDate, endDate: repeatEndDate || null,
+        plannedStartTime: plannedStartTime || null, weekdays: repeat === 'weekly' ? selectedWeekdays : [],
+      })
+    },
     onSuccess: async () => {
-      setTitle('')
-      setPriority('medium')
-      setMinutes(30)
-      setPlannedStartTime('')
+      resetQuickForm()
       setShowForm(false)
       await refresh()
     },
@@ -139,24 +155,47 @@ export function CalendarPage() {
   function changeMonth(offset: number) {
     const next = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + offset, 1)
     setViewMonth(next)
-    setSelectedDate(dateKey(next))
+    selectDate(dateKey(next))
     setShowForm(false)
   }
 
   function returnToday() {
     const now = new Date()
     setViewMonth(new Date(now.getFullYear(), now.getMonth(), 1))
-    setSelectedDate(today)
+    selectDate(today)
   }
 
   function submitTask(event: FormEvent) {
     event.preventDefault()
-    if (title.trim()) createMutation.mutate()
+    if (title.trim() && (repeat !== 'weekly' || selectedWeekdays.length)) createMutation.mutate()
   }
 
   function openQuickForm() {
+    setSelectedWeekdays([dateFromKey(selectedDate).getDay()])
     setShowForm(true)
-    window.requestAnimationFrame(() => dayPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    window.requestAnimationFrame(() => dayPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }))
+  }
+
+  function selectDate(value: string) {
+    setSelectedDate(value)
+    setSelectedWeekdays([dateFromKey(value).getDay()])
+  }
+
+  function resetQuickForm() {
+    setTitle('')
+    setPriority('medium')
+    setMinutes(30)
+    setPlannedStartTime('')
+    setRepeat('none')
+    setIntervalCount(1)
+    setRepeatEndDate('')
+    setSelectedWeekdays([dateFromKey(selectedDate).getDay()])
+  }
+
+  function toggleWeekday(value: number) {
+    setSelectedWeekdays((current) => current.includes(value)
+      ? current.filter((day) => day !== value)
+      : [...current, value])
   }
 
   if (workspaceQuery.isLoading) return <div className="page-state">Preparando sua agenda…</div>
@@ -201,10 +240,10 @@ export function CalendarPage() {
                 const outside = day.getMonth() !== viewMonth.getMonth()
                 return (
                   <div className={`calendar-day ${outside ? 'outside' : ''} ${key === today ? 'today' : ''} ${key === selectedDate ? 'selected' : ''}`} key={key}>
-                    <button className="calendar-day-number" type="button" onClick={() => setSelectedDate(key)} aria-label={`${formatSelectedDate(key)}, ${dayTasks.length} tarefas`}><span>{day.getDate()}</span><small>{dayTasks.length || ''}</small></button>
+                    <button className="calendar-day-number" type="button" onClick={() => selectDate(key)} aria-label={`${formatSelectedDate(key)}, ${dayTasks.length} tarefas`}><span>{day.getDate()}</span><small>{dayTasks.length || ''}</small></button>
                     <div className="calendar-day-tasks">
-                      {dayTasks.slice(0, 3).map((task) => <button className={`calendar-task-chip ${task.priority} ${task.status === 'completed' ? 'done' : ''}`} key={task.id} type="button" onClick={() => setSelectedDate(key)} title={task.title}><span />{task.title}</button>)}
-                      {dayTasks.length > 3 && <button className="calendar-more" type="button" onClick={() => setSelectedDate(key)}>+{dayTasks.length - 3} tarefas</button>}
+                      {dayTasks.slice(0, 3).map((task) => <button className={`calendar-task-chip ${task.priority} ${task.status === 'completed' ? 'done' : ''}`} key={task.id} type="button" onClick={() => selectDate(key)} title={task.title}><span />{task.title}</button>)}
+                      {dayTasks.length > 3 && <button className="calendar-more" type="button" onClick={() => selectDate(key)}>+{dayTasks.length - 3} tarefas</button>}
                     </div>
                   </div>
                 )
@@ -219,9 +258,22 @@ export function CalendarPage() {
           {showForm && (
             <form className="calendar-quick-form" onSubmit={submitTask}>
               <label>Tarefa<input autoFocus required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="O que precisa avançar?" /></label>
-              <div><label>Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Horário<input type="time" value={plannedStartTime} onChange={(event) => setPlannedStartTime(event.target.value)} /></label><label>Minutos<input type="number" min="5" step="5" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label></div>
+              <div className="calendar-task-fields"><label>Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label>Horário<input type="time" value={plannedStartTime} onChange={(event) => setPlannedStartTime(event.target.value)} /></label><label>Minutos<input type="number" min="5" step="5" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label></div>
+              <fieldset className="recurrence-fieldset calendar-recurrence-fieldset">
+                <legend>Repetição</legend>
+                <div className="recurrence-choice-grid">
+                  {([['none', 'Não repetir'], ['daily', 'Diária'], ['weekly', 'Semanal'], ['monthly', 'Mensal']] as const).map(([value, label]) => (
+                    <button className={repeat === value ? 'active' : ''} key={value} type="button" onClick={() => setRepeat(value)}>{label}</button>
+                  ))}
+                </div>
+                {repeat !== 'none' && <div className="recurrence-options">
+                  <label>Repetir a cada<input min="1" max="12" type="number" value={intervalCount} onChange={(event) => setIntervalCount(Number(event.target.value))} /><small>{repeat === 'daily' ? 'dia(s)' : repeat === 'weekly' ? 'semana(s)' : 'mês(es)'}</small></label>
+                  <label>Repetir até<input min={selectedDate} type="date" value={repeatEndDate} onChange={(event) => setRepeatEndDate(event.target.value)} /><small>Opcional</small></label>
+                  {repeat === 'weekly' && <div className="weekday-picker"><span>Dias da semana</span><div>{recurrenceWeekdays.map((day) => <button aria-label={`Dia ${day.value}`} aria-pressed={selectedWeekdays.includes(day.value)} className={selectedWeekdays.includes(day.value) ? 'active' : ''} key={day.value} type="button" onClick={() => toggleWeekday(day.value)}>{day.label}</button>)}</div>{!selectedWeekdays.length && <small>Escolha pelo menos um dia.</small>}</div>}
+                </div>}
+              </fieldset>
               {createMutation.error && <p className="form-error">Não foi possível criar a tarefa.</p>}
-              <button className="primary-button compact" disabled={createMutation.isPending} type="submit">{createMutation.isPending ? 'Salvando…' : 'Adicionar ao dia'}</button>
+              <button className="primary-button compact" disabled={createMutation.isPending || (repeat === 'weekly' && !selectedWeekdays.length)} type="submit">{createMutation.isPending ? 'Salvando…' : repeat === 'none' ? 'Adicionar ao dia' : 'Criar repetição'}</button>
             </form>
           )}
 
