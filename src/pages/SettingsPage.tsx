@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { BellRing, ChevronRight, FileText, KeyRound, LogOut, PlugZap, Save, ShieldCheck, UserRound } from 'lucide-react'
+import { BellRing, Check, ChevronRight, FileText, KeyRound, LogOut, Palette, PlugZap, Save, ShieldCheck, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { useTheme } from '../theme/useTheme'
 
 export function SettingsPage() {
   const { user, signOut, updatePassword, updateProfile } = useAuth()
+  const { theme, options: themeOptions, saving: savingTheme, setTheme } = useTheme()
   const displayName = user?.user_metadata.full_name ?? user?.user_metadata.name ?? 'Minha conta'
   const avatarUrl = user?.user_metadata.avatar_url ?? user?.user_metadata.picture
   const provider = user?.app_metadata.provider === 'google' ? 'Conta Google' : 'Conta por e-mail'
@@ -13,6 +15,18 @@ export function SettingsPage() {
   const [profileMessage, setProfileMessage] = useState('')
   const [securityMessage, setSecurityMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [themeMessage, setThemeMessage] = useState('')
+
+  async function chooseTheme(nextTheme: typeof theme) {
+    if (nextTheme === theme || savingTheme) return
+    setThemeMessage('')
+    try {
+      await setTheme(nextTheme)
+      setThemeMessage('Tema atualizado e salvo na sua conta.')
+    } catch {
+      setThemeMessage('Não foi possível salvar o tema. Tente novamente.')
+    }
+  }
 
   async function handleProfileSubmit(event: FormEvent) {
     event.preventDefault()
@@ -63,6 +77,21 @@ export function SettingsPage() {
         <p>{user?.email}</p>
       </div>
       <span className="account-provider"><ShieldCheck size={16} /> {provider}</span>
+    </section>
+
+    <section className="settings-theme-card" aria-labelledby="theme-settings-title">
+      <header>
+        <span className="settings-card-icon sage"><Palette size={22} /></span>
+        <div><h2 id="theme-settings-title">Aparência do aplicativo</h2><p>Escolha a paleta que combina melhor com o seu espaço.</p></div>
+      </header>
+      <div className="theme-choice-grid" role="radiogroup" aria-label="Tema do aplicativo">
+        {themeOptions.map((option) => <button aria-checked={theme === option.value} aria-label={`${option.label}: ${option.description}`} className={theme === option.value ? 'active' : ''} disabled={savingTheme} key={option.value} onClick={() => void chooseTheme(option.value)} role="radio" type="button">
+          <span className="theme-preview" aria-hidden="true">{option.colors.map((color) => <i key={color} style={{ backgroundColor: color }} />)}</span>
+          <span><strong>{option.label}</strong><small>{option.description}</small></span>
+          <span className="theme-selected-mark">{theme === option.value && <Check size={16} />}</span>
+        </button>)}
+      </div>
+      <p className="settings-feedback theme-feedback" role="status">{savingTheme ? 'Salvando tema…' : themeMessage}</p>
     </section>
 
     <section className="settings-account-grid" aria-label="Dados da conta">

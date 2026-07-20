@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type {
-  AnalyticsDay, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
+  AnalyticsDay, AppTheme, CompanionType, DailyReview, FocusSession, Goal, GoalHorizon, GoalMetric, GoalProgressMode, GoalStatus,
   NotificationPreferences, Priority, ProfilePreferences, Project, ProjectMetric, ProjectStatus, RecurrenceFrequency,
   Reminder, Task, TaskRecurrence, WeeklyReview, WorkspaceMembership,
 } from '../types/domain'
@@ -469,7 +469,7 @@ export async function getProfilePreferences(userId: string) {
   const client = requireClient()
   const { data, error } = await client
     .from('profiles')
-    .select('id, name, companion_type')
+    .select('id, name, companion_type, app_theme')
     .eq('id', userId)
     .single()
   if (error) throw error
@@ -479,6 +479,12 @@ export async function getProfilePreferences(userId: string) {
 export async function updateCompanion(userId: string, companion: CompanionType) {
   const client = requireClient()
   const { error } = await client.from('profiles').update({ companion_type: companion }).eq('id', userId)
+  if (error) throw error
+}
+
+export async function updateAppTheme(userId: string, theme: AppTheme) {
+  const client = requireClient()
+  const { error } = await client.from('profiles').update({ app_theme: theme }).eq('id', userId)
   if (error) throw error
 }
 

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './theme/ThemeContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { initializeMonitoring, reportError } from './lib/monitoring'
@@ -42,7 +43,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter basename={routerBase}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ErrorBoundary><App /><UpdatePrompt /></ErrorBoundary>
+          <ThemeProvider>
+            <ErrorBoundary><App /><UpdatePrompt /></ErrorBoundary>
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </BrowserRouter>
