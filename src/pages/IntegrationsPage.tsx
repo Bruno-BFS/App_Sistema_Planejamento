@@ -4,9 +4,8 @@ import { CalendarCheck2, CheckCircle2, Download, ExternalLink, Info, Link2, Lock
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { useInstallPrompt } from '../hooks/useInstallPrompt'
-import {
-  getDefaultWorkspace, listCalendarTasks, listGoogleCalendarLinks, syncTasksToGoogleCalendar,
-} from '../services/planning'
+import { formatCalendarSyncSummary, GoogleCalendarSyncError, listGoogleCalendarLinks, syncTasksToGoogleCalendar } from '../services/googleCalendar'
+import { getDefaultWorkspace, listCalendarTasks } from '../services/planning'
 
 function localDate(date = new Date()) {
   const value = new Date(date)
@@ -59,7 +58,7 @@ export function IntegrationsPage() {
   const syncMutation = useMutation({
     mutationFn: () => syncTasksToGoogleCalendar(eligibleTasks.map((task) => task.id), providerToken!),
     onSuccess: async (result) => {
-      setSyncMessage(`${result.count} ${result.count === 1 ? 'tarefa sincronizada' : 'tarefas sincronizadas'} com sucesso.`)
+      setSyncMessage(formatCalendarSyncSummary(result))
       await queryClient.invalidateQueries({ queryKey: ['google-calendar-links', workspaceId, user?.id] })
     },
     onError: () => setSyncMessage(''),
@@ -91,7 +90,7 @@ export function IntegrationsPage() {
         <a className="text-link-button" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noreferrer">Abrir Google Calendar <ExternalLink size={14} /></a>
       </div>
       {connectMutation.error && <p className="form-error">Não foi possível iniciar a conexão com o Google.</p>}
-      {syncMutation.error && <p className="form-error">{syncMutation.error.message} Renove a permissão e tente novamente.</p>}
+      {syncMutation.error && <p className="form-error">{syncMutation.error.message} {syncMutation.error instanceof GoogleCalendarSyncError && syncMutation.error.requiresReauthentication ? 'Renove a permissão e tente novamente.' : 'Aguarde um momento e tente novamente.'}</p>}
       {(tasksQuery.data?.length ?? 0) > 25 && <p className="integration-note"><Info size={15} /> Por segurança e controle de cota, cada sincronização processa até 25 tarefas.</p>}
 
       <div className="sync-history">
