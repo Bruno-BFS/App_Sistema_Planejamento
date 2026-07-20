@@ -14,6 +14,10 @@ const priorityLabel: Record<Priority, string> = {
 const frequencyLabel: Record<RecurrenceFrequency, string> = {
   daily: 'Diária', weekly: 'Semanal', monthly: 'Mensal',
 }
+const weekdayOptions = [
+  { value: 1, label: 'S' }, { value: 2, label: 'T' }, { value: 3, label: 'Q' },
+  { value: 4, label: 'Q' }, { value: 5, label: 'S' }, { value: 6, label: 'S' }, { value: 0, label: 'D' },
+]
 
 function localDate() {
   const date = new Date()
@@ -44,6 +48,8 @@ export function RecurringTasksPage() {
   const [intervalCount, setIntervalCount] = useState(1)
   const [startDate, setStartDate] = useState(localDate())
   const [endDate, setEndDate] = useState('')
+  const [plannedStartTime, setPlannedStartTime] = useState('')
+  const [weekdays, setWeekdays] = useState<number[]>([new Date().getDay()])
   const [goalId, setGoalId] = useState('')
   const [projectId, setProjectId] = useState('')
 
@@ -69,7 +75,7 @@ export function RecurringTasksPage() {
     mutationFn: (input: TaskRecurrenceInput) => createTaskRecurrence(input),
     onSuccess: async () => {
       setTitle(''); setDescription(''); setPriority('medium'); setMinutes(30); setFrequency('weekly')
-      setIntervalCount(1); setStartDate(localDate()); setEndDate(''); setGoalId(''); setProjectId(''); setShowForm(false)
+      setIntervalCount(1); setStartDate(localDate()); setEndDate(''); setPlannedStartTime(''); setWeekdays([new Date().getDay()]); setGoalId(''); setProjectId(''); setShowForm(false)
       await refresh()
     },
   })
@@ -92,11 +98,16 @@ export function RecurringTasksPage() {
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    if (!title.trim()) return
+    if (!title.trim() || (frequency === 'weekly' && !weekdays.length)) return
     createMutation.mutate({
       workspaceId: workspaceId!, title, description, priority, estimatedMinutes: minutes, frequency,
-      intervalCount, startDate, endDate: endDate || null, goalId: goalId || null, projectId: projectId || null,
+      intervalCount, startDate, endDate: endDate || null, plannedStartTime: plannedStartTime || null,
+      weekdays: frequency === 'weekly' ? weekdays : [], goalId: goalId || null, projectId: projectId || null,
     })
+  }
+
+  function toggleWeekday(day: number) {
+    setWeekdays((current) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day])
   }
 
   function confirmDelete(recurrence: TaskRecurrence) {
@@ -128,12 +139,14 @@ export function RecurringTasksPage() {
         <label>Frequência<select value={frequency} onChange={(event) => setFrequency(event.target.value as RecurrenceFrequency)}><option value="daily">Diária</option><option value="weekly">Semanal</option><option value="monthly">Mensal</option></select></label>
         <label>Repetir a cada<input min="1" max="12" type="number" value={intervalCount} onChange={(event) => setIntervalCount(Number(event.target.value))} /><small>{frequency === 'daily' ? 'dia(s)' : frequency === 'weekly' ? 'semana(s)' : 'mês(es)'}</small></label>
         <label>Data inicial<input required type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (endDate && endDate < event.target.value) setEndDate('') }} /></label>
+        <label>Horário de início<input type="time" value={plannedStartTime} onChange={(event) => setPlannedStartTime(event.target.value)} /><small>Opcional</small></label>
         <label>Data final (opcional)<input min={startDate} type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
         <label>Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value as Priority)}>{Object.entries(priorityLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>Estimativa (min)<input min="5" step="5" type="number" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label>
         <label>Objetivo<select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sem objetivo</option>{(goalsQuery.data ?? []).filter((goal) => goal.status !== 'completed').map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
         <label>Projeto<select value={projectId} onChange={(event) => chooseProject(event.target.value)}><option value="">Sem projeto</option>{(projectsQuery.data ?? []).filter((project) => project.status !== 'completed').map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
       </div>
+      {frequency === 'weekly' && <div className="weekday-picker recurrence-weekdays"><span>Dias da semana</span><div>{weekdayOptions.map((day) => <button aria-pressed={weekdays.includes(day.value)} className={weekdays.includes(day.value) ? 'active' : ''} key={day.value} type="button" onClick={() => toggleWeekday(day.value)}>{day.label}</button>)}</div>{!weekdays.length && <small>Escolha pelo menos um dia.</small>}</div>}
       <p className="recurrence-hint"><Repeat2 size={15} /> A data inicial também define o dia da semana ou do mês. Meses mais curtos usam o último dia disponível.</p>
       {createMutation.error && <p className="form-error">Não foi possível criar a rotina. Confira as datas e tente novamente.</p>}
       <div className="form-actions"><button className="text-button" type="button" onClick={() => setShowForm(false)}>Cancelar</button><button className="primary-button compact" disabled={createMutation.isPending} type="submit">{createMutation.isPending ? 'Criando…' : 'Criar rotina'}</button></div>
@@ -147,7 +160,7 @@ export function RecurringTasksPage() {
       <div className="recurrence-grid">{recurrences.map((recurrence) => <article className={`recurrence-card ${recurrence.is_active ? '' : 'paused'}`} key={recurrence.id}>
         <div className="recurrence-card-top"><span className={`recurrence-status ${recurrence.is_active ? 'active' : 'paused'}`}>{recurrence.is_active ? 'Ativa' : 'Pausada'}</span><div><button className="icon-button light" type="button" disabled={activeMutation.isPending} onClick={() => activeMutation.mutate({ id: recurrence.id, active: !recurrence.is_active })} aria-label={recurrence.is_active ? `Pausar ${recurrence.title}` : `Retomar ${recurrence.title}`}>{recurrence.is_active ? <Pause size={17} /> : <Play size={17} />}</button><button className="icon-button danger" type="button" disabled={deleteMutation.isPending} onClick={() => confirmDelete(recurrence)} aria-label={`Excluir rotina ${recurrence.title}`}><Trash2 size={17} /></button></div></div>
         <div className="recurrence-copy"><small>{cadence(recurrence)}</small><h3>{recurrence.title}</h3>{recurrence.description && <p>{recurrence.description}</p>}</div>
-        <div className="recurrence-meta"><span><CalendarDays size={15} /> Próxima: <strong>{formatDate(recurrence.next_occurrence)}</strong></span><span><Clock3 size={15} /> {recurrence.estimated_minutes} min</span>{recurrence.project_id && projectMap.get(recurrence.project_id) && <span><FolderKanban size={15} /> {projectMap.get(recurrence.project_id)}</span>}{recurrence.goal_id && goalMap.get(recurrence.goal_id) && <span><Target size={15} /> {goalMap.get(recurrence.goal_id)}</span>}</div>
+        <div className="recurrence-meta"><span><CalendarDays size={15} /> Próxima: <strong>{formatDate(recurrence.next_occurrence)}</strong></span>{recurrence.planned_start_time && <span><Clock3 size={15} /> {recurrence.planned_start_time.slice(0, 5)}</span>}<span><Clock3 size={15} /> {recurrence.estimated_minutes} min</span>{recurrence.project_id && projectMap.get(recurrence.project_id) && <span><FolderKanban size={15} /> {projectMap.get(recurrence.project_id)}</span>}{recurrence.goal_id && goalMap.get(recurrence.goal_id) && <span><Target size={15} /> {goalMap.get(recurrence.goal_id)}</span>}</div>
         <div className="recurrence-footer"><span className={`priority ${recurrence.priority}`}>{priorityLabel[recurrence.priority]}</span><small>{recurrence.end_date ? `Termina em ${formatDate(recurrence.end_date)}` : 'Sem data final'}</small></div>
       </article>)}</div>
     </section>

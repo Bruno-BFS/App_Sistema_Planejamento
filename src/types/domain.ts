@@ -15,6 +15,7 @@ export interface Task {
   status: TaskStatus
   priority: Priority
   planned_date: string | null
+  planned_start_time: string | null
   estimated_minutes: number
   actual_minutes: number
   project_id: string | null
@@ -35,8 +36,10 @@ export interface TaskRecurrence {
   description: string | null
   priority: Priority
   estimated_minutes: number
+  planned_start_time: string | null
   frequency: RecurrenceFrequency
   interval_count: number
+  weekdays: number[]
   start_date: string
   end_date: string | null
   next_occurrence: string
