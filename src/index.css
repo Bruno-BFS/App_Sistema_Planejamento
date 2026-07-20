@@ -321,6 +321,28 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
 .settings-card-icon.amber { color: #9b6d30; background: #faefd9; }
 .settings-session-card { margin-top: 18px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border: 1px solid #e3ddd1; border-radius: 17px; background: rgba(255,255,255,.6); }
 .settings-session-card strong { display: block; margin-bottom: 4px; }
+.settings-account-grid { margin-top: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.settings-account-card { padding: 20px; display: grid; align-content: start; gap: 16px; border: 1px solid var(--paper-edge); border-radius: 17px; background: var(--paper); box-shadow: 0 8px 26px rgba(45,48,41,.045); }
+.settings-account-card header { display: flex; align-items: center; gap: 12px; }
+.settings-account-card h2 { margin: 0 0 3px; font-size: 17px; }
+.settings-account-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.settings-account-card label { display: grid; gap: 7px; color: #494e45; font-size: 11px; font-weight: 700; }
+.settings-account-card input { min-height: 46px; padding: 0 13px; border: 1px solid #d3d1c5; border-radius: var(--radius-control); color: var(--ink); background: #f8f7f0; box-shadow: var(--pressed-shadow); outline: none; }
+.settings-account-card input:focus { border-color: #7f866b; box-shadow: 0 0 0 3px rgba(127,134,107,.12); }
+.settings-account-card .secondary-button { justify-self: start; }
+.settings-feedback { min-height: 16px; color: #627047 !important; }
+.forgot-password-button { margin-top: -9px; justify-self: end; border: 0; color: #596447; background: transparent; font-size: 10px; font-weight: 800; }
+.forgot-password-button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.auth-back-button { justify-self: center; }
+.fatal-error { min-height: 100vh; padding: 28px; display: grid; place-content: center; justify-items: center; gap: 13px; text-align: center; background: var(--canvas); }
+.fatal-error > span { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; color: #9e4b50; background: #f7e5e3; }
+.fatal-error h1 { margin: 2px 0 0; font-size: clamp(25px, 4vw, 36px); }
+.fatal-error p { max-width: 480px; margin: 0 0 7px; color: var(--muted); }
+.update-prompt { position: fixed; z-index: 100; right: 20px; bottom: 20px; width: min(480px, calc(100vw - 40px)); padding: 13px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 11px; border: 1px solid #cdd2c2; border-radius: 16px; color: var(--ink); background: rgba(255,254,249,.98); box-shadow: 0 18px 50px rgba(34,38,31,.18); }
+.update-prompt > span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; color: #607048; background: #e9eedf; }
+.update-prompt > div { display: grid; gap: 2px; }
+.update-prompt small { color: var(--muted); font-size: 10px; }
+.update-prompt .secondary-button { min-height: 38px; }
 .page-header { margin-bottom: 30px; align-items: flex-end; }
 .page-header h1 { max-width: 760px; margin: 8px 0 7px; font-size: clamp(30px, 3vw, 42px); letter-spacing: -1.7px; }
 .page-header p { max-width: 680px; margin-bottom: 0; font-size: 15px; line-height: 1.6; }
@@ -448,6 +470,7 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
   .stat-card { min-height: 80px; padding: 16px; }
   .form-grid, .goal-form-grid, .project-form-grid, .goal-text-grid, .goal-indicator-grid, .project-text-grid, .review-fields, .weekly-reflection-grid, .weekly-adjust-grid, .notification-time-grid { grid-template-columns: 1fr; }
   .settings-grid { grid-template-columns: 1fr; }
+  .settings-account-grid { grid-template-columns: 1fr; }
   .settings-profile-card { grid-template-columns: auto minmax(0, 1fr); padding: 20px; }
   .account-provider { grid-column: 1 / -1; width: fit-content; }
   .task-section, .task-form-card, .review-section, .review-history, .weekly-history, .notification-preference-section { padding: 20px 16px; }
@@ -519,6 +542,9 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
   .account-provider { grid-column: auto; }
   .settings-session-card { align-items: stretch; flex-direction: column; }
   .settings-session-card .secondary-button { width: 100%; }
+  .settings-account-card .secondary-button { width: 100%; justify-content: center; }
+  .update-prompt { right: 12px; bottom: 82px; width: calc(100vw - 24px); grid-template-columns: auto minmax(0, 1fr) auto; }
+  .update-prompt .secondary-button { grid-column: 1 / -1; grid-row: 2; }
 }
 
 @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }

@@ -9,6 +9,9 @@ export interface AuthState {
   signInWithGoogle: () => Promise<void>
   connectGoogleCalendar: () => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<boolean>
+  resetPassword: (email: string) => Promise<void>
+  updatePassword: (password: string) => Promise<void>
+  updateProfile: (name: string) => Promise<void>
   signOut: () => Promise<void>
 }
 

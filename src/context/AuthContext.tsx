@@ -15,9 +15,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession)
       setLoading(false)
+      if (event === 'PASSWORD_RECOVERY') {
+        const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+        window.location.replace(`${basePath}/login?mode=recovery`)
+        return
+      }
       if (nextSession && window.sessionStorage.getItem('meu-ritmo:calendar-connect-pending') === 'true') {
         window.sessionStorage.removeItem('meu-ritmo:calendar-connect-pending')
         const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -72,6 +77,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (error) throw error
       return Boolean(data.session)
+    },
+    async resetPassword(email) {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
+      const redirectTo = `${window.location.origin}${basePath}/login?mode=recovery`
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) throw error
+    },
+    async updatePassword(password) {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) throw error
+    },
+    async updateProfile(name) {
+      if (!supabase) throw new Error('Supabase não configurado.')
+      const { error } = await supabase.auth.updateUser({ data: { name, full_name: name } })
+      if (error) throw error
     },
     async signOut() {
       if (!supabase) return
