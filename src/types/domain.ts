@@ -126,7 +126,10 @@ export interface ProfilePreferences {
   id: string
   name: string
   companion_type: CompanionType
+  app_theme: AppTheme
 }
+
+export type AppTheme = 'olive' | 'rose' | 'charcoal' | 'blue'
 
 export interface DailyReview {
   id: string
