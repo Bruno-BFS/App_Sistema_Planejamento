@@ -15,8 +15,9 @@ function GoogleMark() {
 }
 
 export function LoginPage() {
-  const { user, signIn, signInWithGoogle, signUp } = useAuth()
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const { user, signIn, signInWithGoogle, signUp, resetPassword, updatePassword } = useAuth()
+  const queryMode = new URLSearchParams(window.location.search).get('mode')
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'recovery'>(queryMode === 'recovery' ? 'recovery' : 'login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,7 +33,7 @@ export function LoginPage() {
     window.history.replaceState({}, document.title, window.location.pathname)
   }, [])
 
-  if (user) return <Navigate to="/" replace />
+  if (user && mode !== 'recovery') return <Navigate to="/" replace />
 
   async function handleGoogleSignIn() {
     setError('')
@@ -52,7 +53,15 @@ export function LoginPage() {
     setSuccess('')
     setSubmitting(true)
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        await resetPassword(email)
+        setSuccess('Enviamos um link de recuperação para o seu e-mail.')
+      } else if (mode === 'recovery') {
+        await updatePassword(password)
+        setSuccess('Senha atualizada com segurança. Você já pode continuar.')
+        window.history.replaceState({}, document.title, window.location.pathname)
+        window.setTimeout(() => setMode('login'), 1200)
+      } else if (mode === 'signup') {
         const signedIn = await signUp(email, password, name)
         if (!signedIn) {
           setSuccess('Conta criada. Confirme o link enviado ao seu e-mail e depois entre no aplicativo.')
@@ -106,33 +115,36 @@ export function LoginPage() {
         <div className="login-panel-inner">
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="auth-heading">
-              <span className="eyebrow">{mode === 'login' ? 'Bem-vindo de volta' : 'Comece no seu ritmo'}</span>
-              <h2>{mode === 'login' ? 'Entre no seu espaço.' : 'Crie seu espaço pessoal.'}</h2>
-              <p>{mode === 'login' ? 'Continue de onde parou e cuide do que importa hoje.' : 'Leva menos de um minuto. Depois, você personaliza tudo.'}</p>
+              <span className="eyebrow">{mode === 'login' ? 'Bem-vindo de volta' : mode === 'signup' ? 'Comece no seu ritmo' : 'Segurança da conta'}</span>
+              <h2>{mode === 'login' ? 'Entre no seu espaço.' : mode === 'signup' ? 'Crie seu espaço pessoal.' : mode === 'forgot' ? 'Recupere sua senha.' : 'Defina uma nova senha.'}</h2>
+              <p>{mode === 'login' ? 'Continue de onde parou e cuide do que importa hoje.' : mode === 'signup' ? 'Leva menos de um minuto. Depois, você personaliza tudo.' : mode === 'forgot' ? 'Enviaremos um link seguro para o seu e-mail.' : 'Use pelo menos oito caracteres para proteger sua conta.'}</p>
             </div>
 
-            <button className="oauth-button" disabled={submitting} type="button" onClick={handleGoogleSignIn}>
-              <GoogleMark /> Continuar com Google
-            </button>
-            <div className="auth-divider"><span>ou use seu e-mail</span></div>
+            {(mode === 'login' || mode === 'signup') && <>
+              <button className="oauth-button" disabled={submitting} type="button" onClick={handleGoogleSignIn}>
+                <GoogleMark /> Continuar com Google
+              </button>
+              <div className="auth-divider"><span>ou use seu e-mail</span></div>
+            </>}
 
             {mode === 'signup' && <label><span>Seu nome</span><input required value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" placeholder="Como podemos chamar você?" /></label>}
-            <label><span>E-mail</span><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="voce@exemplo.com" /></label>
-            <label><span>Senha</span><input required minLength={8} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="Mínimo de 8 caracteres" /></label>
+            {mode !== 'recovery' && <label><span>E-mail</span><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="voce@exemplo.com" /></label>}
+            {mode !== 'forgot' && <label><span>Senha {mode === 'recovery' && 'nova'}</span><input required minLength={8} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="Mínimo de 8 caracteres" /></label>}
+            {mode === 'login' && <button className="forgot-password-button" type="button" onClick={() => { setMode('forgot'); setError(''); setSuccess('') }}>Esqueci minha senha</button>}
 
             {success && <p className="form-success" role="status">{success}</p>}
             {error && <p className="form-error auth-error" role="alert">{error}</p>}
 
             <button className="primary-button auth-submit" disabled={submitting} type="submit">
-              {submitting ? 'Aguarde…' : mode === 'login' ? 'Entrar no Meu Ritmo' : 'Criar minha conta'} <ArrowRight size={18} />
+              {submitting ? 'Aguarde…' : mode === 'login' ? 'Entrar no Meu Ritmo' : mode === 'signup' ? 'Criar minha conta' : mode === 'forgot' ? 'Enviar link seguro' : 'Salvar nova senha'} <ArrowRight size={18} />
             </button>
 
-            <p className="auth-mode-copy">
+            {(mode === 'login' || mode === 'signup') ? <p className="auth-mode-copy">
               {mode === 'login' ? 'Novo por aqui?' : 'Já possui uma conta?'}
               <button className="text-button" type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}>
                 {mode === 'login' ? 'Criar conta grátis' : 'Fazer login'}
               </button>
-            </p>
+            </p> : <button className="text-button auth-back-button" type="button" onClick={() => { setMode('login'); setError(''); setSuccess('') }}>Voltar para o login</button>}
 
             <div className="auth-security-note"><ShieldCheck size={16} /><span>Seus dados são protegidos e nunca serão vendidos.</span></div>
             <div className="auth-legal-links"><Link to="/privacidade">Privacidade</Link><span aria-hidden="true">•</span><Link to="/termos">Termos de uso</Link></div>

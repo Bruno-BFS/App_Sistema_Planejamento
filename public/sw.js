@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-ritmo-shell-v3'
+const CACHE_NAME = 'meu-ritmo-shell-__BUILD_VERSION__'
 const scopeUrl = new URL('./', self.registration.scope)
 const APP_SHELL = ['', 'manifest.webmanifest', 'app-icon-mr-192.png', 'app-icon-mr-512.png', 'brand/planner-mark-96.png']
   .map((asset) => new URL(asset, scopeUrl).toString())

@@ -23,6 +23,11 @@ interface CalendarLink {
   google_event_id: string
 }
 
+interface CalendarSyncFailure {
+  taskId: string
+  code: 'google_error' | 'rate_limited'
+}
+
 function response(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -55,27 +60,54 @@ function eventPayload(task: CalendarTask) {
   }
 }
 
+function retryDelay(response: Response, attempt: number) {
+  const retryAfter = Number(response.headers.get('Retry-After'))
+  if (Number.isFinite(retryAfter) && retryAfter > 0) return Math.min(retryAfter * 1000, 5000)
+  return 400 * (2 ** attempt)
+}
+
 async function googleRequest(accessToken: string, url: string, method: 'POST' | 'PUT', body: unknown) {
-  const googleResponse = await fetch(url, {
-    method,
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (googleResponse.status === 401 || googleResponse.status === 403) {
-    return { kind: 'reauth' as const, status: googleResponse.status }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12_000)
+
+    try {
+      const googleResponse = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      if (googleResponse.status === 401 || googleResponse.status === 403) {
+        return { kind: 'reauth' as const, status: googleResponse.status }
+      }
+      if (googleResponse.status === 404 && method === 'PUT') return { kind: 'missing' as const }
+      if (googleResponse.ok) {
+        return { kind: 'success' as const, event: await googleResponse.json() as { id: string; htmlLink?: string } }
+      }
+
+      const retryable = googleResponse.status === 429 || googleResponse.status >= 500
+      if (!retryable || attempt === 2) {
+        return { kind: 'failed' as const, status: googleResponse.status }
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelay(googleResponse, attempt)))
+    } catch (error) {
+      if (attempt === 2) return { kind: 'failed' as const, status: 503 }
+      await new Promise((resolve) => setTimeout(resolve, 400 * (2 ** attempt)))
+      if (!(error instanceof Error)) break
+    } finally {
+      clearTimeout(timeout)
+    }
   }
-  if (googleResponse.status === 404 && method === 'PUT') return { kind: 'missing' as const }
-  if (!googleResponse.ok) {
-    const errorText = (await googleResponse.text()).slice(0, 500)
-    throw new Error(`Google Calendar respondeu ${googleResponse.status}: ${errorText}`)
-  }
-  return { kind: 'success' as const, event: await googleResponse.json() as { id: string; htmlLink?: string } }
+
+  return { kind: 'failed' as const, status: 503 }
 }
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return response({ error: 'Método não permitido.' }, 405)
 
+  const requestId = crypto.randomUUID()
   try {
     const authorization = request.headers.get('Authorization')
     if (!authorization?.startsWith('Bearer ')) return response({ error: 'Sessão ausente.' }, 401)
@@ -95,10 +127,13 @@ Deno.serve(async (request) => {
     const { data: userData, error: userError } = await userClient.auth.getUser()
     if (userError || !userData.user) return response({ error: 'Sessão inválida.' }, 401)
 
-    const body = await request.json() as { googleAccessToken?: string; taskIds?: string[] }
+    const body = await request.json().catch(() => null) as { googleAccessToken?: string; taskIds?: string[] } | null
+    if (!body) return response({ error: 'Corpo da requisição inválido.' }, 400)
     const taskIds = [...new Set(body.taskIds ?? [])]
-    if (!body.googleAccessToken) return response({ error: 'Conecte novamente sua conta Google.', code: 'reauth_required' }, 401)
+    if (!body.googleAccessToken || body.googleAccessToken.length > 4096) return response({ error: 'Conecte novamente sua conta Google.', code: 'reauth_required' }, 401)
     if (!taskIds.length || taskIds.length > 25) return response({ error: 'Envie entre 1 e 25 tarefas por sincronização.' }, 400)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (taskIds.some((taskId) => !uuidPattern.test(taskId))) return response({ error: 'Identificador de tarefa inválido.' }, 400)
 
     const { data: taskRows, error: taskError } = await userClient
       .from('tasks')
@@ -118,6 +153,7 @@ Deno.serve(async (request) => {
     if (linkError) throw linkError
     const links = new Map(((linkRows ?? []) as CalendarLink[]).map((link) => [link.task_id, link]))
     const synced: Array<{ taskId: string; eventId: string; htmlLink: string | null }> = []
+    const failed: CalendarSyncFailure[] = []
 
     for (const task of tasks) {
       const existing = links.get(task.id)
@@ -129,7 +165,10 @@ Deno.serve(async (request) => {
 
       if (result.kind === 'missing') result = await googleRequest(body.googleAccessToken, baseUrl, 'POST', eventPayload(task))
       if (result.kind === 'reauth') return response({ error: 'A permissão do Google expirou ou não inclui o Calendar.', code: 'reauth_required' }, 401)
-      if (result.kind !== 'success') throw new Error('Resposta inesperada do Google Calendar.')
+      if (result.kind === 'failed') {
+        failed.push({ taskId: task.id, code: result.status === 429 ? 'rate_limited' : 'google_error' })
+        continue
+      }
 
       const { error: saveError } = await serviceClient.from('google_calendar_links').upsert({
         workspace_id: task.workspace_id,
@@ -144,10 +183,13 @@ Deno.serve(async (request) => {
       synced.push({ taskId: task.id, eventId: result.event.id, htmlLink: result.event.htmlLink ?? null })
     }
 
-    return response({ synced, count: synced.length })
+    if (failed.length) {
+      console.warn(JSON.stringify({ event: 'google_calendar_partial_sync', requestId, synced: synced.length, failed: failed.length }))
+    }
+    return response({ synced, count: synced.length, failed, requestId })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha inesperada.'
-    console.error('google-calendar-sync failed', message)
-    return response({ error: 'Não foi possível sincronizar com o Google Calendar.' }, 500)
+    console.error(JSON.stringify({ event: 'google_calendar_sync_failed', requestId, message }))
+    return response({ error: 'Não foi possível sincronizar com o Google Calendar.', requestId }, 500)
   }
 })
