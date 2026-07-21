@@ -17,6 +17,7 @@ import {
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { NotificationCenter } from './NotificationCenter'
+import { CompanionCoach } from './CompanionCoach'
 
 const mainNavigation = [
   { to: '/', label: 'Hoje', icon: CalendarDays, end: true },
@@ -126,6 +127,8 @@ export function AppLayout() {
       </header>
 
       <main className="main-content"><Outlet /></main>
+
+      {!['/', '/revisao'].includes(location.pathname) && <CompanionCoach />}
 
       <nav className="mobile-bottom-nav" aria-label="Navegação móvel">
         {mainNavigation.slice(0, 4).map((item) => <NavigationLink compact item={item} key={item.to} />)}
