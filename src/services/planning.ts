@@ -56,6 +56,23 @@ export async function listTodayTasks(workspaceId: string) {
   return data as Task[]
 }
 
+export async function listOverdueTasks(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('tasks')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .lt('planned_date', localDateString())
+    .neq('status', 'completed')
+    .neq('status', 'cancelled')
+    .order('planned_date')
+    .order('priority', { ascending: false })
+    .limit(20)
+
+  if (error) throw error
+  return data as Task[]
+}
+
 export async function listTasks(workspaceId: string) {
   const client = requireClient()
   await generateDueRecurringTasks(workspaceId)

@@ -1,15 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, Clock3, Flame, Heart, Plus, Repeat2, Square, Timer, Zap } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { MoodCompanion } from '../components/MoodCompanion'
-import { companionNames } from '../components/companionConfig'
+import { CalendarDays, Check, Clock3, Flame, Plus, Repeat2, Square, Timer, Zap } from 'lucide-react'
+import { CompanionCoach } from '../components/CompanionCoach'
 import {
   createTask,
-  getDailyReview,
   getActiveFocusSession,
   getDefaultWorkspace,
-  getProfilePreferences,
   listTodayTasks,
   setTaskCompleted,
   startFocusSession,
@@ -37,7 +33,6 @@ export function TodayPage() {
   const [priority, setPriority] = useState<Priority>('medium')
   const [minutes, setMinutes] = useState(30)
   const [now, setNow] = useState(Date.now())
-  const [companionMessage, setCompanionMessage] = useState(0)
   const taskFormRef = useRef<HTMLFormElement>(null)
   const taskTitleRef = useRef<HTMLInputElement>(null)
 
@@ -51,16 +46,6 @@ export function TodayPage() {
   const focusQuery = useQuery({
     queryKey: ['active-focus', workspaceId],
     queryFn: () => getActiveFocusSession(workspaceId!, user!.id),
-    enabled: Boolean(workspaceId && user),
-  })
-  const profileQuery = useQuery({
-    queryKey: ['profile-preferences', user?.id],
-    queryFn: () => getProfilePreferences(user!.id),
-    enabled: Boolean(user),
-  })
-  const reviewQuery = useQuery({
-    queryKey: ['daily-review', workspaceId, user?.id],
-    queryFn: () => getDailyReview(workspaceId!, user!.id),
     enabled: Boolean(workspaceId && user),
   })
 
@@ -118,15 +103,6 @@ export function TodayPage() {
   const longDate = useMemo(() => new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long',
   }).format(new Date()), [])
-  const companion = profileQuery.data?.companion_type ?? 'fox'
-  const mood = reviewQuery.data?.mood_score ?? 3
-  const companionMessages = reviewQuery.data ? [
-    mood <= 2 ? 'Hoje vamos proteger sua energia e cuidar apenas do essencial.' : mood === 3 ? 'Seu ritmo está estável. Vamos escolher um avanço possível.' : 'Sua energia está boa. Que tal usá-la na prioridade mais importante?',
-    mood <= 2 ? 'Pausas também fazem parte de um dia bem planejado.' : mood === 3 ? 'Um passo consciente vale mais que vários no automático.' : 'Guarde um pouco desse ânimo para celebrar no fim do dia.',
-  ] : [
-    'Como você está hoje? Quero acompanhar seu ritmo de verdade.',
-    'Registrar seu humor leva menos de um minuto e ajuda a planejar melhor.',
-  ]
 
   function submitTask(event: FormEvent) {
     event.preventDefault()
@@ -149,11 +125,7 @@ export function TodayPage() {
         <article className="stat-card"><span className="stat-icon coral"><Flame size={20} /></span><div><strong>{tasks.filter((task) => ['high', 'critical'].includes(task.priority)).length}</strong><small>prioridades principais</small></div></article>
       </section>
 
-      <section className={`today-companion-card ${reviewQuery.data ? `mood-${mood}` : 'pending'}`}>
-        <div className="today-companion-visual"><MoodCompanion type={companion} mood={mood} size="small" interactive onInteract={() => setCompanionMessage((current) => current + 1)} /></div>
-        <div className="today-companion-copy"><span><Heart size={14} /> {reviewQuery.data ? `Humor registrado · energia ${reviewQuery.data.energy_score ?? '—'}/5` : 'Check-in do dia'}</span><h2>{reviewQuery.data ? `${companionNames[companion]} está com você` : `${companionNames[companion]} quer saber como você está`}</h2><p>{companionMessages[companionMessage % companionMessages.length]}</p></div>
-        <Link className="secondary-button" to="/revisao">{reviewQuery.data ? 'Ver revisão' : 'Registrar humor'}</Link>
-      </section>
+      <CompanionCoach mode="inline" />
 
       {focusQuery.data && (
         <section className="focus-card">
