@@ -1,15 +1,17 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsPage } from './SettingsPage'
 
 const themeMock = vi.hoisted(() => ({ setTheme: vi.fn() }))
+const avatarMock = vi.hoisted(() => ({ upload: vi.fn(), remove: vi.fn() }))
 
 vi.mock('../context/useAuth', () => ({
   useAuth: () => ({
     user: { email: 'bruno@example.com', user_metadata: { full_name: 'Bruno' }, app_metadata: { provider: 'google' } },
     signOut: vi.fn(), updatePassword: vi.fn(), updateProfile: vi.fn(),
+    uploadProfileAvatar: avatarMock.upload, removeProfileAvatar: avatarMock.remove,
   }),
 }))
 vi.mock('../theme/useTheme', () => ({
@@ -25,6 +27,13 @@ vi.mock('../theme/useTheme', () => ({
 }))
 
 describe('SettingsPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    avatarMock.upload.mockResolvedValue('https://example.com/avatar.webp')
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:avatar-preview') })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() })
+  })
+
   it('mostra os quatro temas e permite escolher uma nova paleta', async () => {
     const user = userEvent.setup()
     themeMock.setTheme.mockResolvedValue(undefined)
@@ -37,5 +46,18 @@ describe('SettingsPage', () => {
 
     await user.click(screen.getByRole('radio', { name: 'Azul: Calmo' }))
     expect(themeMock.setTheme).toHaveBeenCalledWith('blue')
+  })
+
+  it('permite selecionar uma imagem local e confirmar o envio', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><SettingsPage /></MemoryRouter>)
+    const image = new File(['imagem'], 'perfil.png', { type: 'image/png' })
+
+    await user.upload(screen.getByLabelText('Selecionar foto de perfil'), image)
+    expect(screen.getByRole('button', { name: 'Salvar foto' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Salvar foto' }))
+
+    expect(avatarMock.upload).toHaveBeenCalledWith(image)
+    expect(await screen.findByText('Foto atualizada em todo o aplicativo.')).toBeInTheDocument()
   })
 })

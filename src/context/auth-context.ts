@@ -12,6 +12,8 @@ export interface AuthState {
   resetPassword: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
   updateProfile: (name: string) => Promise<void>
+  uploadProfileAvatar: (file: File) => Promise<string>
+  removeProfileAvatar: () => Promise<void>
   signOut: () => Promise<void>
 }
 
