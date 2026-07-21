@@ -127,6 +127,7 @@ export interface ProfilePreferences {
   name: string
   companion_type: CompanionType
   app_theme: AppTheme
+  onboarding_completed_at: string | null
 }
 
 export type AppTheme = 'olive' | 'rose' | 'charcoal' | 'blue'

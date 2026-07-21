@@ -18,6 +18,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { NotificationCenter } from './NotificationCenter'
 import { CompanionCoach } from './CompanionCoach'
+import { OnboardingExperience } from './OnboardingExperience'
 
 const mainNavigation = [
   { to: '/', label: 'Hoje', icon: CalendarDays, end: true },
@@ -83,6 +84,7 @@ export function AppLayout() {
 
   return (
     <div className="app-shell">
+      <OnboardingExperience />
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark image-mark planner-brand-mark"><img src={`${import.meta.env.BASE_URL}brand/planner-mark-96.png`} alt="" /></span>
