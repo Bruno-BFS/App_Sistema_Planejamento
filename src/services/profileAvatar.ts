@@ -55,7 +55,12 @@ export async function uploadProfileAvatar(userId: string, file: File) {
     contentType: 'image/webp',
     upsert: true,
   })
-  if (uploadError) throw uploadError
+  if (uploadError) {
+    if (/row-level security|unauthorized|forbidden/i.test(uploadError.message)) {
+      throw new Error('Não foi possível salvar a foto com segurança. Atualize a página e tente novamente.')
+    }
+    throw uploadError
+  }
   const { data } = client.storage.from(AVATAR_BUCKET).getPublicUrl(path)
   const publicUrl = `${data.publicUrl}?v=${Date.now()}`
   const { error: profileError } = await client.auth.updateUser({ data: {
