@@ -134,7 +134,7 @@ export function SettingsPage() {
         <span className="settings-profile-avatar">
           {displayName.slice(0, 1).toUpperCase()}
           {displayedAvatarUrl && <img src={displayedAvatarUrl} alt={`Foto de ${displayName}`} referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true }} />}
-          <button type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Escolher nova foto"><Camera size={16} /></button>
+          <button type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Escolher nova foto"><Camera size={19} strokeWidth={2.4} /></button>
         </span>
         <input ref={avatarInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Selecionar foto de perfil" onChange={chooseAvatarFile} />
       </div>
