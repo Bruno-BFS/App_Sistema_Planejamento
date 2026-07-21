@@ -486,7 +486,7 @@ export async function getProfilePreferences(userId: string) {
   const client = requireClient()
   const { data, error } = await client
     .from('profiles')
-    .select('id, name, companion_type, app_theme')
+    .select('id, name, companion_type, app_theme, onboarding_completed_at')
     .eq('id', userId)
     .single()
   if (error) throw error
@@ -496,6 +496,15 @@ export async function getProfilePreferences(userId: string) {
 export async function updateCompanion(userId: string, companion: CompanionType) {
   const client = requireClient()
   const { error } = await client.from('profiles').update({ companion_type: companion }).eq('id', userId)
+  if (error) throw error
+}
+
+export async function completeOnboarding(userId: string, companion: CompanionType) {
+  const client = requireClient()
+  const { error } = await client.from('profiles').update({
+    companion_type: companion,
+    onboarding_completed_at: new Date().toISOString(),
+  }).eq('id', userId)
   if (error) throw error
 }
 
