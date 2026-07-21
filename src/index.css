@@ -279,6 +279,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 html { scroll-behavior: smooth; }
 body { color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 button, a { transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 input::placeholder, textarea::placeholder { color: #a1a49c; }
 
@@ -306,6 +307,12 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
 .settings-profile-card { min-height: 130px; padding: 24px 26px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 18px; border: 1px solid var(--paper-edge); border-radius: var(--radius-card); background: var(--paper); box-shadow: var(--card-shadow); }
 .settings-profile-avatar { position: relative; overflow: hidden; width: 70px; height: 70px; display: grid; place-items: center; border: 4px solid #f7f5ea; border-radius: 50%; color: white; background: #70775d; box-shadow: 0 0 0 1px #ccd1c1; font: 800 24px 'Manrope'; }
 .settings-profile-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.settings-avatar-column { display: grid; place-items: center; }
+.settings-profile-avatar > button { position: absolute; z-index: 2; right: -2px; bottom: -2px; width: 28px; height: 28px; display: grid; place-items: center; border: 2px solid var(--paper); border-radius: 50%; color: white; background: var(--theme-primary); box-shadow: 0 3px 10px rgba(30,35,28,.24); }
+.settings-profile-controls { min-width: 230px; display: grid; justify-items: end; gap: 8px; }
+.settings-profile-controls > div { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.settings-profile-controls > p { max-width: 280px; margin: 0; text-align: right; font-size: 10px; }
+.settings-profile-controls > small { color: var(--muted); font-size: 9px; }
 .settings-profile-card h2 { margin: 5px 0 2px; font-size: 23px; }
 .settings-profile-card p, .settings-session-card p { margin: 0; color: var(--muted); }
 .account-provider { min-height: 38px; padding: 0 13px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid #d6dbc8; border-radius: 999px; color: #596348; background: #f0f3e8; font-size: 12px; font-weight: 800; }
@@ -475,7 +482,9 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
   .settings-grid { grid-template-columns: 1fr; }
   .settings-account-grid { grid-template-columns: 1fr; }
   .settings-profile-card { grid-template-columns: auto minmax(0, 1fr); padding: 20px; }
-  .account-provider { grid-column: 1 / -1; width: fit-content; }
+  .settings-profile-controls { grid-column: 1 / -1; width: 100%; min-width: 0; justify-items: start; padding-top: 14px; border-top: 1px solid var(--line); }
+  .settings-profile-controls > p { text-align: left; }
+  .account-provider { width: fit-content; }
   .task-section, .task-form-card, .review-section, .review-history, .weekly-history, .notification-preference-section { padding: 20px 16px; }
   .task-toolbar { align-items: stretch; flex-direction: column; }
   .filter-group { overflow-x: auto; scrollbar-width: none; }
@@ -542,7 +551,9 @@ input::placeholder, textarea::placeholder { color: #a1a49c; }
   .mobile-more-sheet > footer .secondary-button { width: 100%; }
   .settings-profile-card { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .settings-profile-avatar { width: 76px; height: 76px; }
-  .account-provider { grid-column: auto; }
+  .settings-profile-controls { justify-items: center; }
+  .settings-profile-controls > div { width: 100%; justify-content: center; }
+  .settings-profile-controls > p { text-align: center; }
   .settings-session-card { align-items: stretch; flex-direction: column; }
   .settings-session-card .secondary-button { width: 100%; }
   .settings-account-card .secondary-button { width: 100%; justify-content: center; }

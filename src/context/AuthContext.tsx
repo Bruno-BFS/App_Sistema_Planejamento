@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { AuthContext, type AuthState } from './auth-context'
+import { removeProfileAvatar as removeAvatar, uploadProfileAvatar as uploadAvatar } from '../services/profileAvatar'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -94,6 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) throw new Error('Supabase não configurado.')
       const { error } = await supabase.auth.updateUser({ data: { name, full_name: name } })
       if (error) throw error
+    },
+    async uploadProfileAvatar(file) {
+      if (!session?.user) throw new Error('Usuário não autenticado.')
+      return uploadAvatar(session.user.id, file)
+    },
+    async removeProfileAvatar() {
+      if (!session?.user) throw new Error('Usuário não autenticado.')
+      await removeAvatar(session.user.id, session.user.user_metadata.picture ?? null)
     },
     async signOut() {
       if (!supabase) return

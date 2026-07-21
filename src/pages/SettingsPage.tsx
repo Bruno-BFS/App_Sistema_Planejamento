@@ -1,11 +1,12 @@
-import { useState, type FormEvent } from 'react'
-import { BellRing, Check, ChevronRight, FileText, KeyRound, LogOut, Palette, PlugZap, Save, ShieldCheck, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { BellRing, Camera, Check, ChevronRight, FileText, KeyRound, LogOut, Palette, PlugZap, Save, ShieldCheck, Trash2, UserRound, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { useTheme } from '../theme/useTheme'
+import { validateAvatarFile } from '../services/profileAvatar'
 
 export function SettingsPage() {
-  const { user, signOut, updatePassword, updateProfile } = useAuth()
+  const { user, signOut, updatePassword, updateProfile, uploadProfileAvatar, removeProfileAvatar } = useAuth()
   const { theme, options: themeOptions, saving: savingTheme, setTheme } = useTheme()
   const displayName = user?.user_metadata.full_name ?? user?.user_metadata.name ?? 'Minha conta'
   const avatarUrl = user?.user_metadata.avatar_url ?? user?.user_metadata.picture
@@ -16,6 +17,68 @@ export function SettingsPage() {
   const [securityMessage, setSecurityMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [themeMessage, setThemeMessage] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState('')
+  const [avatarMessage, setAvatarMessage] = useState('')
+  const [avatarSaving, setAvatarSaving] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const displayedAvatarUrl = avatarPreview || avatarUrl
+  const hasCustomAvatar = Boolean(user?.user_metadata.custom_avatar_path)
+
+  useEffect(() => () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview)
+  }, [avatarPreview])
+
+  function chooseAvatarFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setAvatarMessage('')
+    try {
+      validateAvatarFile(file)
+      setAvatarFile(file)
+      setAvatarPreview(URL.createObjectURL(file))
+    } catch (error) {
+      setAvatarFile(null)
+      setAvatarPreview('')
+      setAvatarMessage(error instanceof Error ? error.message : 'Não foi possível usar esta imagem.')
+    }
+  }
+
+  function cancelAvatarChange() {
+    setAvatarFile(null)
+    setAvatarPreview('')
+    setAvatarMessage('')
+  }
+
+  async function saveAvatar() {
+    if (!avatarFile) return
+    setAvatarSaving(true)
+    setAvatarMessage('')
+    try {
+      await uploadProfileAvatar(avatarFile)
+      setAvatarFile(null)
+      setAvatarPreview('')
+      setAvatarMessage('Foto atualizada em todo o aplicativo.')
+    } catch (error) {
+      setAvatarMessage(error instanceof Error ? error.message : 'Não foi possível salvar a foto.')
+    } finally {
+      setAvatarSaving(false)
+    }
+  }
+
+  async function removeAvatar() {
+    setAvatarSaving(true)
+    setAvatarMessage('')
+    try {
+      await removeProfileAvatar()
+      setAvatarMessage(user?.user_metadata.picture ? 'A foto da conta Google foi restaurada.' : 'Foto personalizada removida.')
+    } catch (error) {
+      setAvatarMessage(error instanceof Error ? error.message : 'Não foi possível remover a foto.')
+    } finally {
+      setAvatarSaving(false)
+    }
+  }
 
   async function chooseTheme(nextTheme: typeof theme) {
     if (nextTheme === theme || savingTheme) return
@@ -67,16 +130,26 @@ export function SettingsPage() {
     </header>
 
     <section className="settings-profile-card">
-      <span className="settings-profile-avatar">
-        {displayName.slice(0, 1).toUpperCase()}
-        {avatarUrl && <img src={avatarUrl} alt={`Foto de ${displayName}`} referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true }} />}
-      </span>
+      <div className="settings-avatar-column">
+        <span className="settings-profile-avatar">
+          {displayName.slice(0, 1).toUpperCase()}
+          {displayedAvatarUrl && <img src={displayedAvatarUrl} alt={`Foto de ${displayName}`} referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.hidden = true }} />}
+          <button type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Escolher nova foto"><Camera size={16} /></button>
+        </span>
+        <input ref={avatarInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Selecionar foto de perfil" onChange={chooseAvatarFile} />
+      </div>
       <div>
         <span className="eyebrow"><UserRound size={14} /> Perfil conectado</span>
         <h2>{displayName}</h2>
         <p>{user?.email}</p>
       </div>
-      <span className="account-provider"><ShieldCheck size={16} /> {provider}</span>
+      <div className="settings-profile-controls">
+        <span className="account-provider"><ShieldCheck size={16} /> {provider}</span>
+        {avatarFile ? <div><button className="primary-button compact" disabled={avatarSaving} type="button" onClick={() => void saveAvatar()}><Save size={15} /> {avatarSaving ? 'Salvando…' : 'Salvar foto'}</button><button className="icon-button light" disabled={avatarSaving} type="button" onClick={cancelAvatarChange} aria-label="Cancelar nova foto"><X size={17} /></button></div>
+          : <div><button className="secondary-button compact" disabled={avatarSaving} type="button" onClick={() => avatarInputRef.current?.click()}><Camera size={15} /> Alterar foto</button>{hasCustomAvatar && <button className="text-button compact danger-text" disabled={avatarSaving} type="button" onClick={() => void removeAvatar()}><Trash2 size={15} /> Remover</button>}</div>}
+        {avatarMessage && <p className={avatarMessage.includes('atualizada') || avatarMessage.includes('restaurada') || avatarMessage.includes('removida') ? 'settings-feedback' : 'form-error'} role="status">{avatarMessage}</p>}
+        <small>JPG, PNG ou WebP · máximo de 8 MB</small>
+      </div>
     </section>
 
     <section className="settings-theme-card" aria-labelledby="theme-settings-title">
