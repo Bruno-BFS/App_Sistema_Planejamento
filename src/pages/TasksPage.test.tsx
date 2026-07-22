@@ -9,11 +9,14 @@ import { TasksPage } from './TasksPage'
 const planningMocks = vi.hoisted(() => ({
   createTask: vi.fn(),
   createTaskRecurrence: vi.fn(),
-  deleteTask: vi.fn(),
+  archiveTask: vi.fn(),
   getDefaultWorkspace: vi.fn(),
   listGoals: vi.fn(),
   listProjects: vi.fn(),
   listTasks: vi.fn(),
+  listTrashedTasks: vi.fn(),
+  permanentlyDeleteTask: vi.fn(),
+  restoreTask: vi.fn(),
   setTaskCompleted: vi.fn(),
   updateTask: vi.fn(),
 }))
@@ -36,6 +39,8 @@ const task: Task = {
   completed_at: null,
   recurrence_id: null,
   occurrence_date: null,
+  deleted_at: null,
+  deleted_previous_status: null,
   created_at: '2026-07-20T12:00:00.000Z',
 }
 
@@ -57,6 +62,7 @@ describe('TasksPage', () => {
     planningMocks.listTasks.mockResolvedValue([task])
     planningMocks.listGoals.mockResolvedValue([])
     planningMocks.listProjects.mockResolvedValue([])
+    planningMocks.listTrashedTasks.mockResolvedValue([])
     planningMocks.updateTask.mockResolvedValue(undefined)
     planningMocks.createTaskRecurrence.mockResolvedValue(undefined)
   })
@@ -111,5 +117,35 @@ describe('TasksPage', () => {
       weekdays: expect.arrayContaining([new Date().getDay()]),
     })))
     expect(planningMocks.createTask).not.toHaveBeenCalled()
+  })
+
+  it('move uma tarefa para a lixeira e permite desfazer', async () => {
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    planningMocks.archiveTask.mockResolvedValue(undefined)
+    planningMocks.restoreTask.mockResolvedValue(undefined)
+    renderTasksPage()
+
+    await screen.findByText('Tarefa exemplo')
+    await user.click(screen.getByRole('button', { name: 'Excluir Tarefa exemplo' }))
+
+    await waitFor(() => expect(planningMocks.archiveTask).toHaveBeenCalledWith('task-1'))
+    await user.click(await screen.findByRole('button', { name: 'Desfazer' }))
+    await waitFor(() => expect(planningMocks.restoreTask).toHaveBeenCalledWith('task-1'))
+    confirm.mockRestore()
+  })
+
+  it('restaura uma tarefa pela lixeira', async () => {
+    const user = userEvent.setup()
+    planningMocks.listTrashedTasks.mockResolvedValue([{ ...task, status: 'cancelled', deleted_at: '2026-07-22T12:00:00.000Z', deleted_previous_status: 'planned' }])
+    planningMocks.restoreTask.mockResolvedValue(undefined)
+    renderTasksPage()
+
+    await screen.findByText('Tarefa exemplo')
+    await user.click(screen.getByRole('button', { name: 'Lixeira' }))
+    await screen.findByRole('heading', { name: 'Lixeira' })
+    await user.click(screen.getByRole('button', { name: 'Restaurar' }))
+
+    await waitFor(() => expect(planningMocks.restoreTask).toHaveBeenCalledWith('task-1'))
   })
 })

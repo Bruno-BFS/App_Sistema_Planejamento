@@ -168,9 +168,35 @@ export async function updateTask(taskId: string, values: Partial<Pick<Task,
   if (error) throw error
 }
 
-export async function deleteTask(taskId: string) {
+export async function archiveTask(taskId: string) {
   const client = requireClient()
-  const { error } = await client.from('tasks').delete().eq('id', taskId)
+  const { error } = await client.rpc('archive_task', { p_task_id: taskId })
+  if (error) throw error
+}
+
+export async function listTrashedTasks(workspaceId: string) {
+  const client = requireClient()
+  const { data, error } = await client
+    .from('tasks')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+    .limit(200)
+
+  if (error) throw error
+  return data as Task[]
+}
+
+export async function restoreTask(taskId: string) {
+  const client = requireClient()
+  const { error } = await client.rpc('restore_task', { p_task_id: taskId })
+  if (error) throw error
+}
+
+export async function permanentlyDeleteTask(taskId: string) {
+  const client = requireClient()
+  const { error } = await client.rpc('purge_task', { p_task_id: taskId })
   if (error) throw error
 }
 
