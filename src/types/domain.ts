@@ -23,6 +23,8 @@ export interface Task {
   completed_at: string | null
   recurrence_id: string | null
   occurrence_date: string | null
+  deleted_at: string | null
+  deleted_previous_status: TaskStatus | null
   created_at: string
 }
 

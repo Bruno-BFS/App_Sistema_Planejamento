@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Check, Clock3, FolderKanban, Inbox, Pencil, Plus, Repeat2, Search, Target, Trash2, X } from 'lucide-react'
+import { ArchiveRestore, CalendarDays, Check, Clock3, FolderKanban, Inbox, Pencil, Plus, Repeat2, RotateCcw, Search, Target, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { createTask, createTaskRecurrence, deleteTask, getDefaultWorkspace, listGoals, listProjects, listTasks, setTaskCompleted, updateTask } from '../services/planning'
+import { archiveTask, createTask, createTaskRecurrence, getDefaultWorkspace, listGoals, listProjects, listTasks, listTrashedTasks, permanentlyDeleteTask, restoreTask, setTaskCompleted, updateTask } from '../services/planning'
 import { formatMinutes } from '../lib/schedule'
 import type { Priority, RecurrenceFrequency, Task } from '../types/domain'
 
@@ -32,6 +32,8 @@ function formatDate(value: string | null) {
 export function TasksPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
+  const [showTrash, setShowTrash] = useState(false)
+  const [recentlyArchived, setRecentlyArchived] = useState<Task | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
@@ -57,6 +59,11 @@ export function TasksPage() {
     queryFn: () => listTasks(workspaceId!),
     enabled: Boolean(workspaceId),
   })
+  const trashedTasksQuery = useQuery({
+    queryKey: ['trashed-tasks', workspaceId],
+    queryFn: () => listTrashedTasks(workspaceId!),
+    enabled: Boolean(workspaceId),
+  })
   const goalsQuery = useQuery({
     queryKey: ['goals', workspaceId],
     queryFn: () => listGoals(workspaceId!),
@@ -73,6 +80,7 @@ export function TasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks', workspaceId] }),
       queryClient.invalidateQueries({ queryKey: ['today-tasks', workspaceId] }),
       queryClient.invalidateQueries({ queryKey: ['personal-reminders', workspaceId] }),
+      queryClient.invalidateQueries({ queryKey: ['trashed-tasks', workspaceId] }),
     ])
   }
 
@@ -111,8 +119,22 @@ export function TasksPage() {
     mutationFn: ({ task, completed }: { task: Task; completed: boolean }) => setTaskCompleted(task.id, completed),
     onSuccess: refresh,
   })
-  const deleteMutation = useMutation({
-    mutationFn: (taskId: string) => deleteTask(taskId),
+  const archiveMutation = useMutation({
+    mutationFn: (task: Task) => archiveTask(task.id),
+    onSuccess: async (_data, task) => {
+      setRecentlyArchived(task)
+      await refresh()
+    },
+  })
+  const restoreMutation = useMutation({
+    mutationFn: (taskId: string) => restoreTask(taskId),
+    onSuccess: async (_data, taskId) => {
+      setRecentlyArchived((current) => current?.id === taskId ? null : current)
+      await refresh()
+    },
+  })
+  const purgeMutation = useMutation({
+    mutationFn: (taskId: string) => permanentlyDeleteTask(taskId),
     onSuccess: refresh,
   })
 
@@ -139,6 +161,12 @@ export function TasksPage() {
     titleInputRef.current?.focus({ preventScroll: true })
   }, [showForm, editingTask])
 
+  useEffect(() => {
+    if (!recentlyArchived) return
+    const timeout = window.setTimeout(() => setRecentlyArchived(null), 8000)
+    return () => window.clearTimeout(timeout)
+  }, [recentlyArchived])
+
   function resetFields() {
     setTitle('')
     setDescription('')
@@ -161,6 +189,7 @@ export function TasksPage() {
   }
 
   function openCreateForm() {
+    setShowTrash(false)
     setEditingTask(null)
     resetFields()
     setShowForm(true)
@@ -195,8 +224,14 @@ export function TasksPage() {
   }
 
   function confirmDelete(task: Task) {
-    if (window.confirm(`Excluir a tarefa “${task.title}”? Esta ação não pode ser desfeita.`)) {
-      deleteMutation.mutate(task.id)
+    if (window.confirm(`Mover a tarefa “${task.title}” para a lixeira? Você poderá restaurá-la.`)) {
+      archiveMutation.mutate(task)
+    }
+  }
+
+  function confirmPermanentDelete(task: Task) {
+    if (window.confirm(`Excluir “${task.title}” definitivamente? O histórico de foco relacionado também será removido.`)) {
+      purgeMutation.mutate(task.id)
     }
   }
 
@@ -207,7 +242,7 @@ export function TasksPage() {
     <div className="today-page tasks-page">
       <header className="page-header">
         <div><span className="eyebrow">Organização</span><h1>Suas tarefas</h1><p>Capture, priorize e acompanhe tudo que precisa avançar.</p></div>
-        <div className="page-header-actions"><Link className="secondary-button compact" to="/rotinas"><Repeat2 size={17} /> Rotinas</Link><button className="primary-button compact" type="button" onClick={openCreateForm}><Plus size={18} /> Nova tarefa</button></div>
+        <div className="page-header-actions"><button className="secondary-button compact" type="button" onClick={() => { setShowTrash((current) => !current); closeForm() }}><Trash2 size={17} /> {showTrash ? 'Voltar às tarefas' : 'Lixeira'}</button><Link className="secondary-button compact" to="/rotinas"><Repeat2 size={17} /> Rotinas</Link><button className="primary-button compact" type="button" onClick={openCreateForm}><Plus size={18} /> Nova tarefa</button></div>
       </header>
 
       <section className="stats-grid compact-stats">
@@ -216,7 +251,7 @@ export function TasksPage() {
         <article className="stat-card"><span className="stat-icon coral"><Clock3 size={20} /></span><div><strong>{tasks.reduce((sum, task) => sum + task.estimated_minutes, 0)} min</strong><small>tempo planejado</small></div></article>
       </section>
 
-      {showForm && (
+      {!showTrash && showForm && (
         <form className="task-form-card" onSubmit={submitTask} ref={formRef}>
           <div className="form-card-heading"><div><span className="eyebrow">{editingTask ? 'Editar tarefa' : 'Nova tarefa'}</span><h2>{editingTask ? 'Atualize os detalhes da tarefa' : 'O que precisa avançar?'}</h2></div><button className="icon-button light" type="button" onClick={closeForm} aria-label="Fechar formulário"><X size={20} /></button></div>
           {editingTask?.recurrence_id && <p className="task-form-note"><Repeat2 size={16} /> Esta edição altera somente esta ocorrência. Para mudar as próximas, edite a rotina.</p>}
@@ -248,7 +283,15 @@ export function TasksPage() {
         </form>
       )}
 
-      <section className="task-section">
+      {showTrash ? <section className="task-section trash-section">
+        <div className="trash-heading"><div><span className="eyebrow">Exclusão segura</span><h2>Lixeira</h2><p>Restaure tarefas removidas por engano ou exclua definitivamente.</p></div><strong>{(trashedTasksQuery.data ?? []).length} itens</strong></div>
+        {trashedTasksQuery.isLoading && <div className="page-state">Carregando lixeira…</div>}
+        {trashedTasksQuery.error && <div className="page-state error">Não foi possível carregar a lixeira.</div>}
+        {restoreMutation.error && <div className="page-state error">Não foi possível restaurar a tarefa.</div>}
+        {purgeMutation.error && <div className="page-state error">Não foi possível excluir a tarefa definitivamente.</div>}
+        {!trashedTasksQuery.isLoading && !(trashedTasksQuery.data ?? []).length && <div className="empty-state"><span><ArchiveRestore size={28} /></span><h3>A lixeira está vazia.</h3><p>As tarefas removidas aparecerão aqui antes da exclusão definitiva.</p></div>}
+        <div className="task-list">{(trashedTasksQuery.data ?? []).map((task) => <article className="task-row detailed trashed" key={task.id}><span className="trash-task-icon"><Trash2 size={17} /></span><div className="task-copy"><strong>{task.title}</strong><span><small><CalendarDays size={14} /> {formatDate(task.planned_date)}</small><small>{formatMinutes(task.estimated_minutes)} planejados</small></span></div><div className="task-row-actions"><button className="secondary-button compact" type="button" onClick={() => restoreMutation.mutate(task.id)} disabled={restoreMutation.isPending}><RotateCcw size={16} /> Restaurar</button><button className="icon-button danger" type="button" onClick={() => confirmPermanentDelete(task)} aria-label={`Excluir definitivamente ${task.title}`} disabled={purgeMutation.isPending}><Trash2 size={17} /></button></div></article>)}</div>
+      </section> : <section className="task-section">
         <div className="task-toolbar">
           <label className="search-field"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tarefas" aria-label="Buscar tarefas" /></label>
           <div className="filter-group" aria-label="Filtrar tarefas">
@@ -260,6 +303,8 @@ export function TasksPage() {
 
         {tasksQuery.isLoading && <div className="page-state">Carregando tarefas…</div>}
         {tasksQuery.error && <div className="page-state error">Não foi possível carregar as tarefas.</div>}
+        {archiveMutation.error && <div className="page-state error">Não foi possível mover a tarefa para a lixeira.</div>}
+        {completeMutation.error && <div className="page-state error">Não foi possível atualizar a tarefa.</div>}
         {!tasksQuery.isLoading && filteredTasks.length === 0 && (
           <div className="empty-state"><span><Inbox size={28} /></span><h3>Nenhuma tarefa encontrada.</h3><p>{tasks.length ? 'Tente alterar a busca ou os filtros.' : 'Crie a primeira tarefa para começar.'}</p></div>
         )}
@@ -273,13 +318,14 @@ export function TasksPage() {
                 <div className="task-copy"><strong>{task.title}</strong>{task.description && <p>{task.description}</p>}<span><em className={`priority ${task.priority}`}>{priorityLabel[task.priority]}</em>{task.recurrence_id && <small className="recurring-task-label"><Repeat2 size={14} /> Recorrente</small>}<small><CalendarDays size={14} /> {formatDate(task.planned_date)}</small>{task.planned_start_time && <small><Clock3 size={14} /> {task.planned_start_time.slice(0, 5)}–{(() => { const [h, m] = task.planned_start_time!.slice(0, 5).split(':').map(Number); const total = h * 60 + m + task.estimated_minutes; return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}` })()}</small>}<small>{formatMinutes(task.estimated_minutes)} planejados</small>{task.project_id && projectMap.get(task.project_id) && <small><FolderKanban size={14} /> {projectMap.get(task.project_id)}</small>}{task.goal_id && goalMap.get(task.goal_id) && <small><Target size={14} /> {goalMap.get(task.goal_id)}</small>}</span></div>
                 <div className="task-row-actions">
                   <button className="icon-button light" type="button" onClick={() => openEditForm(task)} aria-label={`Editar ${task.title}`}><Pencil size={18} /></button>
-                  <button className="icon-button danger" type="button" onClick={() => confirmDelete(task)} aria-label={`Excluir ${task.title}`} disabled={deleteMutation.isPending}><Trash2 size={18} /></button>
+                  <button className="icon-button danger" type="button" onClick={() => confirmDelete(task)} aria-label={`Excluir ${task.title}`} disabled={archiveMutation.isPending}><Trash2 size={18} /></button>
                 </div>
               </article>
             )
           })}
         </div>
-      </section>
+      </section>}
+      {recentlyArchived && <div className="undo-toast" role="status"><span>Tarefa movida para a lixeira.</span><button type="button" onClick={() => restoreMutation.mutate(recentlyArchived.id)} disabled={restoreMutation.isPending}><RotateCcw size={15} /> Desfazer</button></div>}
     </div>
   )
 }
