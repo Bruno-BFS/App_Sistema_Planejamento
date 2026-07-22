@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { dismissReminder, getDefaultWorkspace, getNotificationPreferences, getPersonalReminders } from '../services/planning'
 import type { Reminder, ReminderKind } from '../types/domain'
+import { refreshWebPushRegistration } from '../services/webPush'
 
 const reminderIcon: Record<ReminderKind, typeof Bell> = {
   overdue_task: Clock3,
@@ -50,6 +51,13 @@ export function NotificationCenter() {
       notification.onclick = () => { window.focus(); navigate(reminder.action_path); notification.close() }
     })
   }, [navigate, preferencesQuery.data?.browser_enabled, visibleReminders])
+
+  useEffect(() => {
+    if (!workspaceId || !preferencesQuery.data?.push_enabled) return
+    void refreshWebPushRegistration(workspaceId).catch((error) => {
+      console.warn('Não foi possível renovar a assinatura Web Push.', error)
+    })
+  }, [preferencesQuery.data?.push_enabled, workspaceId])
 
   function openReminder(reminder: Reminder) {
     setOpen(false)

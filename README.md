@@ -22,6 +22,25 @@ O aplicativo utiliza **skeuomorphism moderno e sutil**: superfícies inspiradas 
 
 Nunca use a chave `service_role` no frontend.
 
+### Web Push
+
+Gere o par VAPID uma única vez (`npx web-push@3.6.7 generate-vapid-keys`) e mantenha a chave privada somente no Supabase:
+
+- Vercel/GitHub Actions: `VITE_WEB_PUSH_VAPID_PUBLIC_KEY`;
+- Supabase Edge Function: `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_SUBJECT` (por exemplo `mailto:suporte@dominio.com`) e `WEB_PUSH_CRON_SECRET`.
+
+O dispatcher `dispatch-web-push` deve ser implantado com a configuração versionada `verify_jwt = false`; ele rejeita chamadas sem o header privado `x-cron-secret`. A migration `20260722213000_web_push_scheduler.sql` habilita `pg_cron`/`pg_net`, lê o segredo `web_push_cron_secret` do Vault e agenda a chamada a cada minuto. Não grave o segredo no SQL versionado.
+
+```sql
+select vault.create_secret(
+  '<mesmo valor de WEB_PUSH_CRON_SECRET configurado na Edge Function>',
+  'web_push_cron_secret',
+  'Autenticação do Cron para o dispatcher Web Push'
+);
+```
+
+Monitore `cron.job_run_details`, `net._http_response`, os logs da Edge Function e as tabelas `notification_outbox`/`notification_delivery_attempts`. O outbox é idempotente por usuário, workspace, canal e chave do lembrete; falhas transitórias usam backoff e endpoints expirados são desativados.
+
 ### Login com Google
 
 O provedor Google OAuth está habilitado no Supabase. O Client Secret permanece somente no backend do Supabase e nunca deve ser adicionado ao React, à Vercel ou ao GitHub.

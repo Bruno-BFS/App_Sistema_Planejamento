@@ -745,12 +745,17 @@ export async function getNotificationPreferences(workspaceId: string, userId: st
     workspace_id: workspaceId,
     user_id: userId,
     browser_enabled: false,
+    push_enabled: false,
     task_reminders: true,
     daily_review_reminders: true,
     weekly_review_reminders: true,
     daily_digest_time: '08:00:00',
     review_reminder_time: '20:00:00',
     weekly_review_day: 7,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
+    quiet_hours_start: '22:00:00',
+    quiet_hours_end: '07:00:00',
+    task_reminder_minutes: 15,
   }) as NotificationPreferences
 }
 
@@ -762,12 +767,17 @@ export async function saveNotificationPreferences(preferences: NotificationPrefe
       workspace_id: preferences.workspace_id,
       user_id: preferences.user_id,
       browser_enabled: preferences.browser_enabled,
+      push_enabled: preferences.push_enabled,
       task_reminders: preferences.task_reminders,
       daily_review_reminders: preferences.daily_review_reminders,
       weekly_review_reminders: preferences.weekly_review_reminders,
       daily_digest_time: preferences.daily_digest_time,
       review_reminder_time: preferences.review_reminder_time,
       weekly_review_day: preferences.weekly_review_day,
+      timezone: preferences.timezone,
+      quiet_hours_start: preferences.quiet_hours_start,
+      quiet_hours_end: preferences.quiet_hours_end,
+      task_reminder_minutes: preferences.task_reminder_minutes,
     }, { onConflict: 'workspace_id,user_id' })
     .select('*')
     .single()

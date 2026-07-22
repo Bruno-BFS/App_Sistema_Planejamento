@@ -194,12 +194,17 @@ export interface NotificationPreferences {
   workspace_id: string
   user_id: string
   browser_enabled: boolean
+  push_enabled: boolean
   task_reminders: boolean
   daily_review_reminders: boolean
   weekly_review_reminders: boolean
   daily_digest_time: string
   review_reminder_time: string
   weekly_review_day: number
+  timezone: string
+  quiet_hours_start: string
+  quiet_hours_end: string
+  task_reminder_minutes: number
 }
 
 export interface GoogleCalendarLink {
