@@ -37,3 +37,41 @@ self.addEventListener('fetch', (event) => {
     }),
   )
 })
+
+self.addEventListener('push', (event) => {
+  let payload = {}
+  try {
+    payload = event.data?.json() ?? {}
+  } catch {
+    payload = { body: event.data?.text() ?? '' }
+  }
+
+  const title = typeof payload.title === 'string' ? payload.title : 'Meu Ritmo'
+  const body = typeof payload.body === 'string' ? payload.body : 'Você tem um novo lembrete.'
+  const actionPath = typeof payload.actionPath === 'string' ? payload.actionPath : '/hoje'
+  const tag = typeof payload.tag === 'string' ? payload.tag : 'meu-ritmo:reminder'
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    tag,
+    renotify: false,
+    icon: new URL('app-icon-mr-192.png', scopeUrl).toString(),
+    badge: new URL('brand/planner-mark-96.png', scopeUrl).toString(),
+    data: { actionPath },
+  }))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const rawPath = typeof event.notification.data?.actionPath === 'string' ? event.notification.data.actionPath : '/hoje'
+  const targetUrl = new URL(rawPath.replace(/^\//, ''), scopeUrl).toString()
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const current = clients.find((client) => new URL(client.url).origin === self.location.origin)
+      if (current) {
+        await current.navigate(targetUrl)
+        return current.focus()
+      }
+      return self.clients.openWindow(targetUrl)
+    }),
+  )
+})
