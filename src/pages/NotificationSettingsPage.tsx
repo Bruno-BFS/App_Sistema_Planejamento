@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, BellRing, CheckCircle2, Clock3, Info, Save, ShieldCheck } from 'lucide-react'
+import { NotificationDeliveryHealth } from '../components/NotificationDeliveryHealth'
 import { useAuth } from '../context/useAuth'
 import { getDefaultWorkspace, getNotificationPreferences, saveNotificationPreferences } from '../services/planning'
 import { disableWebPush, enableWebPush, getWebPushAvailability } from '../services/webPush'
@@ -114,6 +115,8 @@ export function NotificationSettingsPage() {
         </>}
       </div>
     </section>
+
+    <NotificationDeliveryHealth workspaceId={workspaceId} userId={user.id} pushEnabled={preferences.push_enabled} />
 
     <form className="notification-preferences-form" onSubmit={submit}>
       <section className="notification-preference-section">

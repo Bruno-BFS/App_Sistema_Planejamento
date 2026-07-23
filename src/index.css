@@ -1037,3 +1037,146 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .task-row.trashed .task-row-actions { width: 100%; justify-content: flex-end; }
   .undo-toast { right: 12px; bottom: 90px; min-width: 0; width: calc(100vw - 24px); }
 }
+
+/* Notification delivery observability */
+.notification-health-card {
+  margin-bottom: 18px;
+  padding: 22px;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-card);
+  background: var(--paper);
+  box-shadow: var(--raised-shadow);
+}
+.notification-health-heading {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 13px;
+}
+.notification-health-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--primary-dark);
+  background: var(--theme-soft);
+}
+.notification-health-heading h2 { margin: 3px 0; font-size: 19px; }
+.notification-health-heading p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.health-warning .notification-health-icon,
+.health-inactive .notification-health-icon { color: #956b30; background: #faefd9; }
+.health-critical .notification-health-icon { color: #a24848; background: #f8e5e2; }
+.notification-health-metrics {
+  margin-top: 17px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.notification-health-metrics article {
+  min-width: 0;
+  padding: 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #e2e0d6;
+  border-radius: 11px;
+  background: #f8f7f0;
+}
+.notification-health-metrics article > svg { flex: 0 0 auto; color: var(--primary-dark); }
+.notification-health-metrics span { min-width: 0; display: grid; }
+.notification-health-metrics strong { font-size: 18px; }
+.notification-health-metrics small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notification-health-alert {
+  margin-top: 14px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid #e9c6c1;
+  border-radius: 11px;
+  color: #8f4040;
+  background: #fff2ef;
+}
+.notification-health-alert svg { flex: 0 0 auto; }
+.notification-health-alert strong { font-size: 11px; }
+.notification-health-alert p { margin: 3px 0 0; font-size: 10px; line-height: 1.5; }
+.notification-health-last-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+  color: #7d4f4f;
+  background: #faf3f1;
+  font-size: 10px;
+}
+.notification-health-history-heading {
+  margin-top: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notification-health-history-heading > div { display: flex; align-items: center; gap: 7px; }
+.notification-health-history-heading h3 { margin: 0; font-size: 14px; }
+.notification-health-history-heading > span { color: var(--muted); font-size: 9px; }
+.notification-health-history {
+  margin-top: 10px;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #e2e0d6;
+  border-radius: 11px;
+}
+.notification-health-history article {
+  padding: 11px 12px;
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e8e6dc;
+}
+.notification-health-history article:last-child { border-bottom: 0; }
+.notification-health-history article > div { min-width: 0; display: grid; gap: 3px; }
+.notification-health-history strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.notification-health-history small { color: var(--muted); font-size: 9px; }
+.delivery-status {
+  width: fit-content;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #59634a;
+  background: #e9eedf;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.delivery-status.status-failed { color: #984646; background: #f8e6e3; }
+.delivery-status.status-retry,
+.delivery-status.status-pending,
+.delivery-status.status-processing { color: #89632e; background: #f8ecd5; }
+.delivery-status.status-cancelled { color: #73766f; background: #ecece8; }
+.notification-health-empty,
+.notification-health-state { margin: 0; padding: 22px; color: var(--muted); font-size: 11px; text-align: center; }
+.notification-health-error { display: flex; align-items: center; gap: 12px; color: #934747; }
+.notification-health-error > div { flex: 1; }
+.notification-health-error p { margin: 3px 0 0; color: var(--muted); font-size: 10px; }
+.spin { animation: notification-spin .8s linear infinite; }
+@keyframes notification-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 760px) {
+  .notification-health-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .notification-health-card { padding: 18px 15px; }
+  .notification-health-heading { grid-template-columns: auto 1fr; }
+  .notification-health-heading > button { grid-column: 1 / -1; width: 100%; justify-content: center; }
+  .notification-health-history-heading { align-items: flex-start; flex-direction: column; }
+  .notification-health-history article { grid-template-columns: 82px 1fr; }
+}
