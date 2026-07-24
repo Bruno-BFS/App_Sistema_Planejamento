@@ -1,5 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import {
+  incidentWindow,
+  operationalContext,
+  operationalIncidentKey,
+  type OperationalIncidentKind,
+} from './incidents.ts'
 
 interface OutboxMessage {
   id: string
@@ -19,6 +25,37 @@ interface StoredSubscription {
   p256dh: string
   auth: string
   failure_count: number
+}
+
+type ServiceClient = ReturnType<typeof createClient>
+
+interface OperationalIncidentInput {
+  kind: OperationalIncidentKind
+  subject: string
+  severity: 'warning' | 'error'
+  message: string
+  workspaceId?: string
+  userId?: string
+  context: Record<string, unknown>
+}
+
+const sentryDsn = Deno.env.get('SENTRY_DSN')?.trim()
+let sentryClientPromise: ReturnType<typeof loadSentry> | null = null
+
+async function loadSentry() {
+  const Sentry = await import('npm:@sentry/deno@10.67.0')
+  Sentry.init({
+    dsn: sentryDsn!,
+    environment: Deno.env.get('SENTRY_ENVIRONMENT')?.trim() || 'production',
+    sendDefaultPii: false,
+    tracesSampleRate: 0,
+  })
+  return Sentry
+}
+
+function getSentryClient() {
+  sentryClientPromise ??= loadSentry()
+  return sentryClientPromise
 }
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -49,9 +86,140 @@ function errorDetails(error: unknown) {
   }
 }
 
+interface StoredOperationalIncident {
+  id: string
+  kind: OperationalIncidentKind
+  severity: 'warning' | 'error'
+  message: string
+  context: Record<string, unknown>
+  occurrence_count: number
+  last_report_attempt_at: string | null
+}
+
+async function sendOperationalIncident(serviceClient: ServiceClient, incident: StoredOperationalIncident) {
+  try {
+    const attemptedAt = new Date().toISOString()
+    const { error: attemptUpdateError } = await serviceClient
+      .from('notification_operational_incidents')
+      .update({ last_report_attempt_at: attemptedAt })
+      .eq('id', incident.id)
+    if (attemptUpdateError) throw attemptUpdateError
+
+    if (!sentryDsn) {
+      await serviceClient
+        .from('notification_operational_incidents')
+        .update({ last_report_error: 'SENTRY_DSN não configurado.' })
+        .eq('id', incident.id)
+      console.warn(JSON.stringify({
+        event: 'notification_incident_pending',
+        incidentId: incident.id,
+        kind: incident.kind,
+        reason: 'sentry_not_configured',
+      }))
+      return false
+    }
+
+    const Sentry = await getSentryClient()
+    const eventId = Sentry.withScope((scope) => {
+      scope.setLevel(incident.severity)
+      scope.setTag('component', 'web-push-dispatcher')
+      scope.setTag('incident_kind', incident.kind)
+      scope.setFingerprint(['notification-operations', incident.kind, incidentWindow()])
+      scope.setContext('notification_operation', {
+        ...incident.context,
+        occurrence_count: incident.occurrence_count,
+      })
+      return Sentry.captureMessage(incident.message)
+    })
+    const flushed = await Sentry.flush(2_000)
+    if (!flushed) throw new Error('Sentry não confirmou o envio dentro do prazo.')
+
+    const { error: updateError } = await serviceClient
+      .from('notification_operational_incidents')
+      .update({
+        reported_at: new Date().toISOString(),
+        sentry_event_id: eventId,
+        last_report_error: null,
+      })
+      .eq('id', incident.id)
+    if (updateError) throw updateError
+    return true
+  } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida.'
+    await serviceClient
+      .from('notification_operational_incidents')
+      .update({ last_report_error: message })
+      .eq('id', incident.id)
+    console.error(JSON.stringify({
+      event: 'notification_incident_report_failed',
+      kind: incident.kind,
+      message,
+    }))
+    return false
+  }
+}
+
+async function reportOperationalIncident(serviceClient: ServiceClient, input: OperationalIncidentInput) {
+  try {
+    const { data, error } = await serviceClient.rpc('register_notification_operational_incident', {
+      p_incident_key: operationalIncidentKey(input.kind, input.subject),
+      p_kind: input.kind,
+      p_severity: input.severity,
+      p_message: input.message,
+      p_workspace_id: input.workspaceId ?? null,
+      p_user_id: input.userId ?? null,
+      p_context: input.context,
+    })
+    if (error) throw error
+
+    const registered = (data?.[0] ?? null) as {
+      incident_id: string
+      should_report: boolean
+      occurrence_count: number
+    } | null
+    if (!registered?.should_report) return false
+
+    return sendOperationalIncident(serviceClient, {
+      id: registered.incident_id,
+      kind: input.kind,
+      severity: input.severity,
+      message: input.message,
+      context: input.context,
+      occurrence_count: registered.occurrence_count,
+      last_report_attempt_at: null,
+    })
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: 'notification_incident_register_failed',
+      kind: input.kind,
+      message: error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida.',
+    }))
+    return false
+  }
+}
+
+async function flushPendingOperationalIncidents(serviceClient: ServiceClient) {
+  const { data, error } = await serviceClient
+    .from('notification_operational_incidents')
+    .select('id,kind,severity,message,context,occurrence_count,last_report_attempt_at')
+    .is('reported_at', null)
+    .order('last_seen_at', { ascending: true })
+    .limit(10)
+  if (error) throw error
+
+  const retryBefore = Date.now() - 15 * 60_000
+  let reported = 0
+  for (const incident of (data ?? []) as StoredOperationalIncident[]) {
+    if (incident.last_report_attempt_at && new Date(incident.last_report_attempt_at).getTime() > retryBefore) continue
+    if (await sendOperationalIncident(serviceClient, incident)) reported += 1
+  }
+  return reported
+}
+
 Deno.serve(async (request) => {
   if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
   const requestId = crypto.randomUUID()
+  let serviceClient: ServiceClient | null = null
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -70,16 +238,24 @@ Deno.serve(async (request) => {
     }
 
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
+    serviceClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
 
+    const recoveredIncidents = await flushPendingOperationalIncidents(serviceClient)
     const { data: enqueued, error: enqueueError } = await serviceClient.rpc('enqueue_due_push_notifications')
     if (enqueueError) throw enqueueError
     const { data: claimedRows, error: claimError } = await serviceClient.rpc('claim_push_notifications', { p_limit: 50 })
     if (claimError) throw claimError
     const messages = (claimedRows ?? []) as OutboxMessage[]
-    const summary = { enqueued: Number(enqueued ?? 0), claimed: messages.length, sent: 0, retried: 0, failed: 0 }
+    const summary = {
+      enqueued: Number(enqueued ?? 0),
+      claimed: messages.length,
+      sent: 0,
+      retried: 0,
+      failed: 0,
+      incidents: recoveredIncidents,
+    }
 
     for (const message of messages) {
       const { data: subscriptionRows, error: subscriptionError } = await serviceClient
@@ -90,6 +266,22 @@ Deno.serve(async (request) => {
         .is('disabled_at', null)
       if (subscriptionError) throw subscriptionError
       const subscriptions = (subscriptionRows ?? []) as StoredSubscription[]
+      if (subscriptions.length === 0) {
+        const reported = await reportOperationalIncident(serviceClient, {
+          kind: 'no_active_subscription',
+          subject: `${message.workspace_id}:${message.user_id}`,
+          severity: 'warning',
+          message: 'Notificação Web Push sem dispositivo ativo.',
+          workspaceId: message.workspace_id,
+          userId: message.user_id,
+          context: operationalContext({
+            requestId,
+            outboxId: message.id,
+            attempts: message.attempts,
+          }),
+        })
+        if (reported) summary.incidents += 1
+      }
 
       let delivered = false
       let retryableFailure = false
@@ -126,11 +318,12 @@ Deno.serve(async (request) => {
         } else {
           const details = errorDetails(pushError)
           const permanent = details.statusCode === 404 || details.statusCode === 410
+          const nextFailureCount = subscription.failure_count + 1
           retryableFailure ||= !permanent
           lastError = details.message
           const [subscriptionUpdate, attemptInsert] = await Promise.all([
             serviceClient.from('push_subscriptions').update({
-              failure_count: subscription.failure_count + 1,
+              failure_count: nextFailureCount,
               last_error: details.message,
               disabled_at: permanent ? new Date().toISOString() : null,
             }).eq('id', subscription.id),
@@ -142,6 +335,24 @@ Deno.serve(async (request) => {
           ])
           if (subscriptionUpdate.error) throw subscriptionUpdate.error
           if (attemptInsert.error) throw attemptInsert.error
+          if (!permanent && nextFailureCount >= 3) {
+            const reported = await reportOperationalIncident(serviceClient, {
+              kind: 'delivery_recurring_failure',
+              subject: subscription.id,
+              severity: 'error',
+              message: 'Falhas recorrentes na entrega Web Push.',
+              workspaceId: message.workspace_id,
+              userId: message.user_id,
+              context: operationalContext({
+                requestId,
+                failureCount: nextFailureCount,
+                statusCode: details.statusCode,
+                outboxId: message.id,
+                attempts: message.attempts,
+              }),
+            })
+            if (reported) summary.incidents += 1
+          }
         }
       }
 
@@ -167,6 +378,15 @@ Deno.serve(async (request) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha inesperada.'
     console.error(JSON.stringify({ event: 'web_push_dispatch_failed', requestId, message }))
+    if (serviceClient) {
+      await reportOperationalIncident(serviceClient, {
+        kind: 'dispatcher_failure',
+        subject: 'dispatch-web-push',
+        severity: 'error',
+        message: 'Falha fatal no dispatcher Web Push.',
+        context: operationalContext({ requestId }),
+      })
+    }
     return json({ error: 'Não foi possível processar as notificações.', requestId }, 500)
   }
 })
