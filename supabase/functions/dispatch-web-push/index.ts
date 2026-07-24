@@ -86,6 +86,79 @@ function errorDetails(error: unknown) {
   }
 }
 
+interface StoredOperationalIncident {
+  id: string
+  kind: OperationalIncidentKind
+  severity: 'warning' | 'error'
+  message: string
+  context: Record<string, unknown>
+  occurrence_count: number
+  last_report_attempt_at: string | null
+}
+
+async function sendOperationalIncident(serviceClient: ServiceClient, incident: StoredOperationalIncident) {
+  try {
+    const attemptedAt = new Date().toISOString()
+    const { error: attemptUpdateError } = await serviceClient
+      .from('notification_operational_incidents')
+      .update({ last_report_attempt_at: attemptedAt })
+      .eq('id', incident.id)
+    if (attemptUpdateError) throw attemptUpdateError
+
+    if (!sentryDsn) {
+      await serviceClient
+        .from('notification_operational_incidents')
+        .update({ last_report_error: 'SENTRY_DSN não configurado.' })
+        .eq('id', incident.id)
+      console.warn(JSON.stringify({
+        event: 'notification_incident_pending',
+        incidentId: incident.id,
+        kind: incident.kind,
+        reason: 'sentry_not_configured',
+      }))
+      return false
+    }
+
+    const Sentry = await getSentryClient()
+    const eventId = Sentry.withScope((scope) => {
+      scope.setLevel(incident.severity)
+      scope.setTag('component', 'web-push-dispatcher')
+      scope.setTag('incident_kind', incident.kind)
+      scope.setFingerprint(['notification-operations', incident.kind, incidentWindow()])
+      scope.setContext('notification_operation', {
+        ...incident.context,
+        occurrence_count: incident.occurrence_count,
+      })
+      return Sentry.captureMessage(incident.message)
+    })
+    const flushed = await Sentry.flush(2_000)
+    if (!flushed) throw new Error('Sentry não confirmou o envio dentro do prazo.')
+
+    const { error: updateError } = await serviceClient
+      .from('notification_operational_incidents')
+      .update({
+        reported_at: new Date().toISOString(),
+        sentry_event_id: eventId,
+        last_report_error: null,
+      })
+      .eq('id', incident.id)
+    if (updateError) throw updateError
+    return true
+  } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida.'
+    await serviceClient
+      .from('notification_operational_incidents')
+      .update({ last_report_error: message })
+      .eq('id', incident.id)
+    console.error(JSON.stringify({
+      event: 'notification_incident_report_failed',
+      kind: incident.kind,
+      message,
+    }))
+    return false
+  }
+}
+
 async function reportOperationalIncident(serviceClient: ServiceClient, input: OperationalIncidentInput) {
   try {
     const { data, error } = await serviceClient.rpc('register_notification_operational_incident', {
@@ -99,60 +172,48 @@ async function reportOperationalIncident(serviceClient: ServiceClient, input: Op
     })
     if (error) throw error
 
-    const incident = (data?.[0] ?? null) as {
+    const registered = (data?.[0] ?? null) as {
       incident_id: string
       should_report: boolean
       occurrence_count: number
     } | null
-    if (!incident?.should_report) return false
+    if (!registered?.should_report) return false
 
-    if (!sentryDsn) {
-      await serviceClient
-        .from('notification_operational_incidents')
-        .update({ last_report_error: 'SENTRY_DSN não configurado.' })
-        .eq('id', incident.incident_id)
-      console.warn(JSON.stringify({
-        event: 'notification_incident_pending',
-        incidentId: incident.incident_id,
-        kind: input.kind,
-        reason: 'sentry_not_configured',
-      }))
-      return false
-    }
-
-    const Sentry = await getSentryClient()
-    const eventId = Sentry.withScope((scope) => {
-      scope.setLevel(input.severity)
-      scope.setTag('component', 'web-push-dispatcher')
-      scope.setTag('incident_kind', input.kind)
-      scope.setFingerprint(['notification-operations', input.kind, incidentWindow()])
-      scope.setContext('notification_operation', {
-        ...input.context,
-        occurrence_count: incident.occurrence_count,
-      })
-      return Sentry.captureMessage(input.message)
+    return sendOperationalIncident(serviceClient, {
+      id: registered.incident_id,
+      kind: input.kind,
+      severity: input.severity,
+      message: input.message,
+      context: input.context,
+      occurrence_count: registered.occurrence_count,
+      last_report_attempt_at: null,
     })
-    const flushed = await Sentry.flush(2_000)
-    if (!flushed) throw new Error('Sentry não confirmou o envio dentro do prazo.')
-
-    const { error: updateError } = await serviceClient
-      .from('notification_operational_incidents')
-      .update({
-        reported_at: new Date().toISOString(),
-        sentry_event_id: eventId,
-        last_report_error: null,
-      })
-      .eq('id', incident.incident_id)
-    if (updateError) throw updateError
-    return true
   } catch (error) {
     console.error(JSON.stringify({
-      event: 'notification_incident_report_failed',
+      event: 'notification_incident_register_failed',
       kind: input.kind,
       message: error instanceof Error ? error.message.slice(0, 500) : 'Falha desconhecida.',
     }))
     return false
   }
+}
+
+async function flushPendingOperationalIncidents(serviceClient: ServiceClient) {
+  const { data, error } = await serviceClient
+    .from('notification_operational_incidents')
+    .select('id,kind,severity,message,context,occurrence_count,last_report_attempt_at')
+    .is('reported_at', null)
+    .order('last_seen_at', { ascending: true })
+    .limit(10)
+  if (error) throw error
+
+  const retryBefore = Date.now() - 15 * 60_000
+  let reported = 0
+  for (const incident of (data ?? []) as StoredOperationalIncident[]) {
+    if (incident.last_report_attempt_at && new Date(incident.last_report_attempt_at).getTime() > retryBefore) continue
+    if (await sendOperationalIncident(serviceClient, incident)) reported += 1
+  }
+  return reported
 }
 
 Deno.serve(async (request) => {
@@ -181,12 +242,20 @@ Deno.serve(async (request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     })
 
+    const recoveredIncidents = await flushPendingOperationalIncidents(serviceClient)
     const { data: enqueued, error: enqueueError } = await serviceClient.rpc('enqueue_due_push_notifications')
     if (enqueueError) throw enqueueError
     const { data: claimedRows, error: claimError } = await serviceClient.rpc('claim_push_notifications', { p_limit: 50 })
     if (claimError) throw claimError
     const messages = (claimedRows ?? []) as OutboxMessage[]
-    const summary = { enqueued: Number(enqueued ?? 0), claimed: messages.length, sent: 0, retried: 0, failed: 0, incidents: 0 }
+    const summary = {
+      enqueued: Number(enqueued ?? 0),
+      claimed: messages.length,
+      sent: 0,
+      retried: 0,
+      failed: 0,
+      incidents: recoveredIncidents,
+    }
 
     for (const message of messages) {
       const { data: subscriptionRows, error: subscriptionError } = await serviceClient

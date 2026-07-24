@@ -2,6 +2,7 @@ export type OperationalIncidentKind =
   | 'delivery_recurring_failure'
   | 'no_active_subscription'
   | 'dispatcher_failure'
+  | 'observability_test'
 
 export function incidentWindow(date = new Date()) {
   return date.toISOString().slice(0, 10)

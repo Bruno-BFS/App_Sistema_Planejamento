@@ -41,7 +41,7 @@ select vault.create_secret(
 
 Monitore `cron.job_run_details`, `net._http_response`, os logs da Edge Function e as tabelas `notification_outbox`/`notification_delivery_attempts`. O outbox é idempotente por usuário, workspace, canal e chave do lembrete; falhas transitórias usam backoff e endpoints expirados são desativados.
 
-Incidentes operacionais ficam na tabela privada `notification_operational_incidents` e são enviados ao Sentry no máximo uma vez por tipo/origem a cada dia UTC. O dispatcher não envia endpoint, chaves push, título ou conteúdo da notificação ao Sentry. Se o Sentry estiver indisponível, o incidente permanece sem `reported_at` para uma nova tentativa.
+Incidentes operacionais ficam na tabela privada `notification_operational_incidents` e são enviados ao Sentry no máximo uma vez por tipo/origem a cada dia UTC. O dispatcher não envia endpoint, chaves push, título ou conteúdo da notificação ao Sentry. Se o Sentry estiver indisponível, o incidente permanece sem `reported_at` e o dispatcher tenta novamente a cada 15 minutos.
 
 ### Login com Google
 
