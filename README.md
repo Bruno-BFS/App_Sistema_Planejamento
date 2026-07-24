@@ -27,7 +27,7 @@ Nunca use a chave `service_role` no frontend.
 Gere o par VAPID uma única vez (`npx web-push@3.6.7 generate-vapid-keys`) e mantenha a chave privada somente no Supabase:
 
 - Vercel/GitHub Actions: `VITE_WEB_PUSH_VAPID_PUBLIC_KEY`;
-- Supabase Edge Function: `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_SUBJECT` (por exemplo `mailto:suporte@dominio.com`) e `WEB_PUSH_CRON_SECRET`.
+- Supabase Edge Function: `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_SUBJECT` (por exemplo `mailto:suporte@dominio.com`), `WEB_PUSH_CRON_SECRET`, `SENTRY_DSN` e `SENTRY_ENVIRONMENT=production`.
 
 O dispatcher `dispatch-web-push` deve ser implantado com a configuração versionada `verify_jwt = false`; ele rejeita chamadas sem o header privado `x-cron-secret`. A migration `20260722213000_web_push_scheduler.sql` habilita `pg_cron`/`pg_net`, lê o segredo `web_push_cron_secret` do Vault e agenda a chamada a cada minuto. Não grave o segredo no SQL versionado.
 
@@ -40,6 +40,8 @@ select vault.create_secret(
 ```
 
 Monitore `cron.job_run_details`, `net._http_response`, os logs da Edge Function e as tabelas `notification_outbox`/`notification_delivery_attempts`. O outbox é idempotente por usuário, workspace, canal e chave do lembrete; falhas transitórias usam backoff e endpoints expirados são desativados.
+
+Incidentes operacionais ficam na tabela privada `notification_operational_incidents` e são enviados ao Sentry no máximo uma vez por tipo/origem a cada dia UTC. O dispatcher não envia endpoint, chaves push, título ou conteúdo da notificação ao Sentry. Se o Sentry estiver indisponível, o incidente permanece sem `reported_at` para uma nova tentativa.
 
 ### Login com Google
 
